@@ -1,0 +1,31 @@
+networks:
+  microservice-net:
+    driver: bridge
+services:
+  redis:
+    image: "redis:7.2.5"
+    ports:
+      - "6379:6379"
+    volumes:
+      - "../redis/data:/data"
+    networks:
+      - microservice-net
+      
+  demucs-webapi:
+    build: 
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    volumes:
+      - "./:/app"
+    networks:
+      - microservice-net
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - capabilities: [gpu]
+    command: /bin/sh -c "while sleep 1000; do :; done"
+  
+

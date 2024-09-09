@@ -1,0 +1,22 @@
+[tool.poetry]
+name = "demucs-webapi"
+version = "0.1.0"
+description = ""
+authors = ["koki622 <koki08018907926@gmail.com>"]
+license = "MIT"
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = ">=3.9"
+fastapi = "0.111.0"
+uvicorn = "0.30.1"
+demucs = { git = "https://github.com/javad-rzvn/demucs.git", rev="f61d304"}
+torchaudio = "<2.1"
+torch = "<2.1, !=2.0.1, !=2.1.0"
+python-multipart = "^0.0.9"
+numpy = "<2.0"
+sse-starlette = "^2.1.2"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

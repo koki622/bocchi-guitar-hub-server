@@ -1,0 +1,167 @@
+x-kong-config:
+  &kong-env
+  KONG_DATABASE: postgres
+  KONG_PG_DATABASE: kong
+  KONG_PG_HOST: kong-db
+  KONG_PG_PASSWORD: kongpass
+  KONG_PG_USER: kong
+
+networks:
+  webapi-net:
+    driver: bridge
+
+volumes:
+  consumer_data:
+  redis_data:
+
+services:
+  kong-migrations:
+    image: kong:3.7.1
+    command: kong migrations bootstrap
+    depends_on:
+      - kong-db
+    environment:
+      <<: *kong-env
+    networks:
+      - webapi-net
+    restart: on-failure
+
+  kong:
+    image: kong:3.7.1
+    environment:
+      <<: *kong-env
+      KONG_PROXY_ACCESS_LOG: /dev/stdout
+      KONG_ADMIN_ACCESS_LOG: /dev/stdout
+      KONG_PROXY_ERROR_LOG: /dev/stderr
+      KONG_ADMIN_ERROR_LOG: /dev/stderr
+      KONG_ADMIN_LISTEN: 0.0.0.0:8001
+      KONG_ADMIN_GUI_LISTEN: 0.0.0.0:8002
+    networks:
+      - webapi-net
+    ports:
+      - "8000:8000"
+      - "8001:8001"
+      - "8002:8002"
+      - "8005:8005"
+      - "8006:8006"
+      - "8443:8443"
+      - "8444:8444"
+      - "8445:8445"
+    restart: on-failure:5
+
+  kong-db:
+    image: postgres:16.1-bullseye
+    environment:
+      POSTGRES_DB: kong
+      POSTGRES_USER: kong
+      POSTGRES_PASSWORD: kongpass
+    restart: on-failure
+    stdin_open: true
+    tty: true
+    networks:
+      - webapi-net
+  redis:
+      image: redis:7.2.5
+      ports:
+        - "${REDIS_PORT}:6379"
+      environment:
+        - REDIS_PORT=${REDIS_PORT}
+      volumes:
+        - redis_data:${REDIS_VOLUME_PATH}
+      networks:
+        - webapi-net
+        
+  utility-webapi:
+    build:
+      context: ./microservices/utility-webapi
+      dockerfile: Dockerfile
+    ports:
+      - ${UTILITY_WEBAPI_PORT}:8000
+    environment:
+      - CONSUMER_VOLUME_PATH=${CONSUMER_VOLUME_PATH}
+    volumes:
+      - ./microservices/utility-webapi/:/app
+      - consumer_data:${CONSUMER_VOLUME_PATH}
+    networks:
+      - webapi-net
+    command: /bin/sh -c "while sleep 1000; do :; done"
+
+  faster-whisper-webapi:
+    build:
+      context: ./microservices/faster-whisper-webapi
+      dockerfile: Dockerfile
+    ports:
+      - ${FASTER_WHISPER_WEBAPI_PORT}:8000
+    environment:
+      - CONSUMER_VOLUME_PATH=${CONSUMER_VOLUME_PATH}
+    volumes:
+      - ./microservices/faster-whisper-webapi/:/app
+      - consumer_data:${CONSUMER_VOLUME_PATH}
+    networks:
+      - webapi-net
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - capabilities: [gpu]
+    command: /bin/sh -c "while sleep 1000; do :; done"
+
+  demucs-webapi:
+    build: 
+      context: ./microservices/demucs-webapi
+      dockerfile: Dockerfile
+    ports:
+      - ${DEMUCS_WEBAPI_PORT}:8000
+    environment:
+      - CONSUMER_VOLUME_PATH=${CONSUMER_VOLUME_PATH}
+    volumes:
+      - ./microservices/demucs-webapi/:/app
+      - consumer_data:${CONSUMER_VOLUME_PATH}
+    networks:
+      - webapi-net
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - capabilities: [gpu]
+    command: /bin/sh -c "while sleep 1000; do :; done"
+  
+
+  allin1-webapi:
+    build:
+      context: ./microservices/allin1-webapi
+      dockerfile: Dockerfile
+    ports:
+      - ${ALLIN1_WEBAPI_PORT}:8000
+    environment:
+      - CONSUMER_VOLUME_PATH=${CONSUMER_VOLUME_PATH}
+    volumes:
+      - ./microservices/allin1-webapi/:/app
+      - consumer_data:${CONSUMER_VOLUME_PATH}
+    networks:
+      - webapi-net
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - capabilities: [gpu]
+    command: /bin/sh -c "while sleep 1000; do :; done"
+
+
+
+  crema-webapi:
+    build:
+      context: ./microservices/crema-webapi
+      dockerfile: Dockerfile
+    ports:
+      - ${CREMA_WEBAPI_PORT}:8000
+    environment:
+      - CONSUMER_VOLUME_PATH=${CONSUMER_VOLUME_PATH}
+    volumes:
+      - ./microservices/crema-webapi/:/app
+      - consumer_data:${CONSUMER_VOLUME_PATH}
+    networks:
+      - webapi-net
+    command: /bin/sh -c "while sleep 1000; do :; done"
+
+

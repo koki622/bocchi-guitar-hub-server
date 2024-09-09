@@ -1,0 +1,22 @@
+[tool.poetry]
+name = "allin1-webapi"
+version = "0.1.0"
+description = ""
+authors = ["koki622 <koki08018907926@gmail.com>"]
+license = "MIT"
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = ">=3.9"
+fastapi = "0.111.0"
+uvicorn = "0.30.1"
+python-multipart = "^0.0.9"
+allin1 = "1.1.0"
+madmom = { git = "https://github.com/CPJKU/madmom.git"}
+natten = { url = "https://shi-labs.com/natten/wheels/cu121/torch2.3.0/natten-0.17.1%2Btorch230cu121-cp310-cp310-linux_x86_64.whl" }
+numpy = "1.23.0"
+
+[build-system]
+requires = ["poetry-core", "cython"]
+build-backend = "poetry.core.masonry.api"
+
