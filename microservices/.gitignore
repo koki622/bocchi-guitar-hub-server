@@ -1,3 +1,4 @@
 crema(cuda)-webapi/
 whisper-webapi/
 .env
+docker-compose.yml
