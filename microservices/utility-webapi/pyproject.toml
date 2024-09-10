@@ -18,6 +18,7 @@ shortuuid = "^1.0.13"
 pydantic-settings = "^2.3.4"
 uvloop = "^0.19.0"
 hiredis = "^3.0.0"
+pydub = "^0.25.1"
 
 [build-system]
 requires = ["poetry-core"]
