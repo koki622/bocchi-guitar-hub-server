@@ -1,17 +1,19 @@
 from datetime import datetime
-from fastapi import APIRouter, Request, Depends
+from pathlib import Path
+from fastapi import APIRouter, HTTPException, Request, Depends
 import redis.asyncio
+import os
 from sse_starlette import EventSourceResponse
-from app.api.deps import get_asyncio_redis_conn
+from app.api.deps import get_asyncio_redis_conn, get_consumer_dir
 from app.core.heavy_job import HeavyJob
 from app.core.config import settings
 
 router = APIRouter()
 
 @router.post(
-    "/separate-audio"
+    "/separated-audio"
 )
-def separate(request: Request, r_asyncio: redis.asyncio.Redis = Depends(get_asyncio_redis_conn)) -> EventSourceResponse:
+def separate(request: Request, dir_name: str, consumer_dir: Path = Depends(get_consumer_dir), r_asyncio: redis.asyncio.Redis = Depends(get_asyncio_redis_conn)) -> EventSourceResponse:
     job_router = HeavyJob(
         redis_host=settings.REDIS_HOST, 
         redis_port=settings.REDIS_PORT, 
@@ -21,9 +23,19 @@ def separate(request: Request, r_asyncio: redis.asyncio.Redis = Depends(get_asyn
     )
     now = datetime.now()
     print(now)
-    temp_file_path = "../input/soramo_toberuhazu.wav"
-    request_body = {"file_path":temp_file_path}
-
+    audiofile_path = consumer_dir / dir_name / (dir_name + '.wav')
+    if os.path.exists(audiofile_path):
+        request_body = {'file_path': str(audiofile_path)}
+    else:
+        raise HTTPException(
+            status_code=400,
+            detail='ディレクトリが存在しません'
+        )
+    if os.path.exists(consumer_dir / dir_name / 'separated'):
+        raise HTTPException(
+            status_code=400,
+            detail='既に音声の分離がされています。'
+        )
     return EventSourceResponse(
         job_router.stream(
             request=request, 

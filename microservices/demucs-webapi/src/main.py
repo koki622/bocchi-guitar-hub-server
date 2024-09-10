@@ -1,3 +1,4 @@
+from pathlib import Path
 from fastapi import FastAPI, UploadFile
 from tempfile import NamedTemporaryFile
 from contextlib import asynccontextmanager
@@ -43,13 +44,19 @@ async def test(temp_file_path):
 @app.post("/")
 def separate(body: FilePathBody):
     file_path = body.file_path
+    save_dir_path = Path(file_path).parent / 'separated'
+    save_dir_path.mkdir()
     now = datetime.now()
     print(f"処理開始:{now}")
-    separator.separate_audio_file(file_path)
+    origin, separated = separator.separate_audio_file(file_path)
     torch.cuda.empty_cache()
     end_time = datetime.now()
     duration = end_time - now
     print(f"end:{end_time}, duration:{duration}")
+    
+    for stem, source in separated.items():
+        demucs.api.save_audio(source, save_dir_path / f'{stem}.wav', separator.samplerate)
+
     return {"end":end_time}
     """
     # fileの拡張子を取得
