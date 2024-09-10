@@ -68,3 +68,19 @@ def response_separated_audio(audiofile_path: Path = Depends(get_audiofile_path))
         media_type='application/zip', 
         headers={"Content-Disposition": f'attachment; filename={audiofile_path.stem}_separated.zip'}
     )
+
+@router.delete('/separated-audio')
+def delete_separated_audio(audiofile_path: Path = Depends(get_audiofile_path)):
+    delete_count = 0
+    if os.path.exists(audiofile_path.parent / 'separated'):
+        shutil.rmtree(audiofile_path.parent / 'separated')
+        delete_count += 1
+    if os.path.exists(audiofile_path.parent / 'separated.zip'):
+        os.remove(audiofile_path.parent / 'separated.zip')
+        delete_count += 1
+    if delete_count == 0:
+        raise HTTPException(
+            status_code=400,
+            detail='音声の分離結果が存在しません。'
+        )
+    return('ok')
