@@ -1,8 +1,12 @@
 from datetime import datetime
 from pathlib import Path
 from fastapi import APIRouter, HTTPException, Request, Depends
+from fastapi.responses import FileResponse
 import redis.asyncio
 import os
+import shutil
+import tempfile
+from pydub import AudioSegment
 from sse_starlette import EventSourceResponse
 from app.api.deps import get_asyncio_redis_conn, get_audiofile_path
 from app.core.heavy_job import HeavyJob
@@ -41,4 +45,26 @@ def separate(request: Request, audiofile_path: Path = Depends(get_audiofile_path
             request_connect_timeout=settings.DEMUCS_WEBAPI_CONNECT_TIMEOUT,
             request_read_timeout=settings.DEMUCS_WEBAPI_READ_TIMEOUT
         )
+    )
+
+@router.get('/separated-audio')
+def response_separated_audio(audiofile_path: Path = Depends(get_audiofile_path)):
+    separated_path = audiofile_path.parent / 'separated'
+    if os.path.exists(audiofile_path.parent / 'separated.zip'):
+        pass
+    elif os.path.exists(separated_path):
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            for f in os.listdir(separated_path):
+                wav_audio = AudioSegment.from_wav(separated_path / f)
+                wav_audio.export(Path(tmp_dir) / (Path(f).stem + '.mp3'), format='mp3')
+            shutil.make_archive(separated_path, 'zip', tmp_dir)
+    else:
+        raise HTTPException(
+            status_code=400,
+            detail='音声の分離が完了していません。'
+        )
+    return FileResponse(
+        path=audiofile_path.parent / 'separated.zip', 
+        media_type='application/zip', 
+        headers={"Content-Disposition": f'attachment; filename={audiofile_path.stem}_separated.zip'}
     )
