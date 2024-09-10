@@ -1,5 +1,20 @@
+import os
 import redis.asyncio
 from app.core.config import settings
+from fastapi import HTTPException, Header
+from pathlib import Path
+
+def get_consumer_dir(consumer_id: str = Header(settings.ANONYMOUS_CONSUMER_NAME, alias=settings.HTTP_HEADER_CONSUMER_ID)):
+    print('受信しました')
+    
+    consumer_dir_path = Path(settings.CONSUMER_VOLUME_PATH, consumer_id)
+    if os.path.exists(consumer_dir_path):
+        return consumer_dir_path
+    else:
+        raise HTTPException(
+            status_code=400,
+            detail='コンシューマーディレクトリが存在しません。最初にコンシューマーの初期化をしてください。'
+        )
 
 def get_asyncio_redis_conn() -> redis.asyncio.Redis:
     return redis.asyncio.Redis(
