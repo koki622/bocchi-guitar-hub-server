@@ -18,11 +18,10 @@ async def save_audiofile(request: Request, audiofile: UploadFile = File(...), co
             status_code=400,
             detail=f'{audiofile.content_type} 形式はサポートしていません'
         )
-    rand_dirname = shortuuid.ShortUUID().random(length=7)
-    audiofile_dir = Path(consumer_dir / rand_dirname)
+    audiofile_id = shortuuid.ShortUUID().random(length=7)
+    audiofile_dir = Path(consumer_dir / audiofile_id)
     audiofile_dir.mkdir()
-    rand_filename = rand_dirname + audiofile_suffix
-    audiofile_path = audiofile_dir / rand_filename
+    audiofile_path = audiofile_dir / (audiofile_id + audiofile_suffix)
 
     with audiofile_path.open('wb') as buffer:
         shutil.copyfileobj(audiofile.file, buffer)
@@ -30,12 +29,12 @@ async def save_audiofile(request: Request, audiofile: UploadFile = File(...), co
     if audiofile.content_type == 'audio/mpeg':
         # アップロードされた音声ファイルがmp3の場合、wavに変換
         mp3_audio = AudioSegment.from_mp3(audiofile_path)
-        wav_audiofile_path = audiofile_dir / (rand_dirname + '.wav')
+        wav_audiofile_path = audiofile_dir / (audiofile_id + '.wav')
         mp3_audio.export(wav_audiofile_path, format='wav')
 
-    return {'filename': audiofile.filename, 'dir_name': rand_dirname}
+    return {'filename': audiofile.filename, 'audiofile_id': audiofile_id}
 
-@router.delete("/", description='オーディオファイルを削除する。')
+@router.delete("/{audiofile_id}", description='オーディオファイルを削除する。')
 async def delete_audiofile(audiofile_path: Path = Depends(get_audiofile_path)):
     shutil.rmtree(audiofile_path.parent)
     return('ok')

@@ -16,9 +16,9 @@ def get_consumer_dir(consumer_id: str = Header(settings.ANONYMOUS_CONSUMER_NAME,
             detail='コンシューマーディレクトリが存在しません。'
         )
 
-def get_audiofile_path(dir_name: str, consumer_id: str = Header(settings.ANONYMOUS_CONSUMER_NAME, alias=settings.HTTP_HEADER_CONSUMER_ID)):
+def get_audiofile_path(audiofile_id: str, consumer_id: str = Header(settings.ANONYMOUS_CONSUMER_NAME, alias=settings.HTTP_HEADER_CONSUMER_ID)):
     consumer_dir = get_consumer_dir(consumer_id)
-    audiofile_path = consumer_dir / dir_name / (dir_name + '.wav')
+    audiofile_path = consumer_dir / audiofile_id / (audiofile_id + '.wav')
     if os.path.exists(audiofile_path):
         return audiofile_path
     else:
