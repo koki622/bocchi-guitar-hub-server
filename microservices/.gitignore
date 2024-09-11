@@ -2,3 +2,4 @@ crema(cuda)-webapi/
 whisper-webapi/
 .env
 docker-compose.yml
+**/__pycache__/**
