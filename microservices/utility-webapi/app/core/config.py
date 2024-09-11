@@ -23,7 +23,7 @@ class Settings(BaseSettings):
     WHISPER_WEBAPI_CONNECT_TIMEOUT: Union[int, float] | None = 3
     WHISPER_WEBAPI_READ_TIMEOUT: Union[int, float] | None = 60
 
-    UPLOAD_FILE_CONTENT_TYPE: list[str] = ['audio/mpeg', 'audio/wav', 'audio/aac']
+    UPLOAD_FILE_CONTENT_TYPE: list[str] = ['audio/mpeg', 'audio/wav']
 
     HTTP_HEADER_CONSUMER_ID: str = 'x_consumer_id'
 settings = Settings()
