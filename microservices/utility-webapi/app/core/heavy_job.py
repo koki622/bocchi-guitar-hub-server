@@ -70,13 +70,14 @@ async def route_job(
     dst_api_host: str,
     dst_api_port: int,
     path: str="/",
+    headers: json=None,
     payload: json=None, 
     connect_timeout: Union[float, int] = None,
     read_timeout: Union[float, int] = None
 ):
     url = f"http://{dst_api_host}:{dst_api_port}{path}"
     try:
-        response = requests.post(url=url, json=payload, timeout=(connect_timeout, read_timeout))
+        response = requests.post(url=url, json=payload, headers=headers, timeout=(connect_timeout, read_timeout))
         return 'ok'
     except Timeout as e:
         raise e
@@ -174,7 +175,8 @@ class HeavyJob:
         pubsub_channel: str,
         queue_name: str, 
         job_timeout: Union[int, str] = 60,
-        request_path: str = "/", 
+        request_path: str = "/",
+        request_headers: dict = None,
         request_body: dict = None, 
         request_connect_timeout: Union[int, float] = None,
         request_read_timeout: Union[int, float] = None
@@ -186,6 +188,7 @@ class HeavyJob:
             "dst_api_host": self.dst_api_host,
             "dst_api_port": self.dst_api_port,
             "path": request_path, 
+            'headers':request_headers,
             "payload": request_body, 
             "connect_timeout": request_connect_timeout,
             "read_timeout": request_read_timeout
