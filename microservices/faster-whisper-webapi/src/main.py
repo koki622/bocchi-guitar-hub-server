@@ -1,3 +1,5 @@
+import json
+from pathlib import Path
 from fastapi import FastAPI, UploadFile
 from tempfile import NamedTemporaryFile
 from contextlib import asynccontextmanager
@@ -56,7 +58,7 @@ def process_file(file_path: str):
 """
 
 @app.post("/")
-def analyzeLyric(body: FilePathBody):
+def analyze_lyric(body: FilePathBody):
     file_path = body.file_path
     now = datetime.now()
     print(now)
@@ -78,6 +80,9 @@ def analyzeLyric(body: FilePathBody):
         ssubs = pysubs2.load_from_whisper(segment_results)
         ssubs.save(path="../output/soramo_seg.srt")
         """
+        
+        with open(Path(file_path).parent.parent / 'lyric.txt', 'w', encoding='utf-8') as txt:
+            json.dump({'segments':segment_results, 'word':word_results}, txt)
     except Exception as e:
         print(f"エラーが発生:{e}")
         return e

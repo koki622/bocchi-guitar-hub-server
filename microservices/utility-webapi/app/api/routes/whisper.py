@@ -1,36 +1,52 @@
 from datetime import datetime
-from fastapi import APIRouter, Request
+import json
+import os
+from pathlib import Path
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sse_starlette import EventSourceResponse
 import redis.asyncio
-from app.core.heavy_job import HeavyJobRouter, heavy_job_res
+from app.api.deps import get_asyncio_redis_conn, get_audiofile_path
+from app.core.heavy_job import HeavyJob
+from app.core.config import settings
 
 router = APIRouter()
 
-r_asyncio = redis.asyncio.Redis(
-    host='redis', 
-    port=6379, 
-    decode_responses=True,
-    health_check_interval=10,
-    socket_connect_timeout=5,
-    retry_on_timeout=True,
-    socket_keepalive=True)
-
-@router.post("/whisper")
-def analyzeLyric(request: Request) -> EventSourceResponse:
-    job_router = HeavyJobRouter("faster-whisper-webapi", 8000)
+@router.post("/lyric")
+def analyze_lyric(request: Request, audiofile_path: Path = Depends(get_audiofile_path), r_asyncio: redis.asyncio.Redis = Depends(get_asyncio_redis_conn)) -> EventSourceResponse:
+    job_router = HeavyJob(
+        redis_host=settings.REDIS_HOST, 
+        redis_port=settings.REDIS_PORT, 
+        redis_asyncio_conn=r_asyncio, 
+        dst_api_host=settings.WHISPER_WEBAPI_HOST, 
+        dst_api_port=settings.WHISPER_WEBAPI_PORT
+    )
     now = datetime.now()
     print(now)
-    temp_file_path = "../input/soramo_toberuhazu(vocal).wav"
-    request_body = {"file_path":temp_file_path}
+    
+    if os.path.exists(audiofile_path.parent / 'lyric.txt'):
+        raise HTTPException(
+            status_code=400,
+            detail='既に歌詞解析がされています。'
+        )
+    if not os.path.exists(audiofile_path.parent / 'separated'):
+        raise HTTPException(
+            status_code=400,
+            detail='音声の分離結果が見つかりませんでした。解析には音声の分離結果が必要です。'
+        )
+    request_body = {'file_path': str(audiofile_path.parent / 'separated' / 'vocals.wav')}
     return EventSourceResponse(
-        heavy_job_res(
-            request, 
-            'gpu:channel', 
-            'gpu_queue', 
-            job_router, 
-            'redis', 
-            '6379', 
-            r_asyncio, 
-            request_body=request_body
+        job_router.stream(
+            request=request, 
+            queue_name='gpu_queue',
+            job_timeout=settings.WHISPER_WEBAPI_JOB_TIMEOUT,
+            request_path='/',
+            request_body=request_body,
+            request_connect_timeout=settings.WHISPER_WEBAPI_CONNECT_TIMEOUT,
+            request_read_timeout=settings.WHISPER_WEBAPI_READ_TIMEOUT
         )
     )
+
+@router.get('/lyric')
+def response_lyric(audiofile_path: Path = Depends(get_audiofile_path)):
+    with open(audiofile_path.parent / 'lyric.txt') as f:
+        return json.load(f)

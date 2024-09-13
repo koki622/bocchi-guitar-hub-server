@@ -20,6 +20,7 @@ class Settings(BaseSettings):
 
     WHISPER_WEBAPI_HOST: str = 'faster-whisper-webapi'
     WHISPER_WEBAPI_PORT: int = 8000
+    WHISPER_WEBAPI_JOB_TIMEOUT : Union[int, float] | None = 60
     WHISPER_WEBAPI_CONNECT_TIMEOUT: Union[int, float] | None = 3
     WHISPER_WEBAPI_READ_TIMEOUT: Union[int, float] | None = 60
 
