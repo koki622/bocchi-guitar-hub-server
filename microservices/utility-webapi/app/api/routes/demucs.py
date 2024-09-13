@@ -35,9 +35,8 @@ def separate(request: Request, audiofile_path: Path = Depends(get_audiofile_path
     return EventSourceResponse(
         job_router.stream(
             request=request, 
-            pubsub_channel='gpu:channel', 
             queue_name='gpu_queue',
-            job_timeout=settings.DEMUCS_WEBAPI_SEPARATE_JOB_TIMEOUT,
+            job_timeout=settings.DEMUCS_WEBAPI_JOB_TIMEOUT,
             request_path='/',
             request_body=request_body,
             request_connect_timeout=settings.DEMUCS_WEBAPI_CONNECT_TIMEOUT,
@@ -66,7 +65,6 @@ def response_separated_audio(request: Request, audiofile_id: str, consumer_id: s
         return EventSourceResponse(
             job_router.stream(
                 request=request, 
-                pubsub_channel='cpu:channel', 
                 queue_name='cpu_queue',
                 job_timeout=60,
                 request_path=f'/demucs/separated-audio/{audiofile_id}/zip',

@@ -171,8 +171,7 @@ class HeavyJob:
     
     async def stream(
         self,
-        request: Request, 
-        pubsub_channel: str,
+        request: Request,
         queue_name: str, 
         job_timeout: Union[int, str] = 60,
         request_path: str = "/",

@@ -14,7 +14,7 @@ class Settings(BaseSettings):
 
     DEMUCS_WEBAPI_HOST: str = 'demucs-webapi'
     DEMUCS_WEBAPI_PORT: int = 8000
-    DEMUCS_WEBAPI_SEPARATE_JOB_TIMEOUT : Union[int, float] | None = 60
+    DEMUCS_WEBAPI_JOB_TIMEOUT : Union[int, float] | None = 60
     DEMUCS_WEBAPI_CONNECT_TIMEOUT: Union[int, float] | None = 3
     DEMUCS_WEBAPI_READ_TIMEOUT: Union[int, float] | None = 60
 
