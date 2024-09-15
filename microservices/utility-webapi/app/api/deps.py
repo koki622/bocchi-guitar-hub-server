@@ -1,31 +1,29 @@
-import os
 import redis.asyncio
 from app.core.config import settings
-from fastapi import HTTPException, Header
+from app.models import Audiofile, Consumer, ConsumerHeaders
+from fastapi import Depends, File, HTTPException, Header, Path as fastapi_path, UploadFile
 from pathlib import Path
 
-def get_consumer_dir(consumer_id: str = Header(settings.ANONYMOUS_CONSUMER_NAME, alias=settings.HTTP_HEADER_CONSUMER_ID)):
-    print('受信しました')
-    
-    consumer_dir_path = Path(settings.CONSUMER_VOLUME_PATH, consumer_id)
-    if os.path.exists(consumer_dir_path):
-        return consumer_dir_path
-    else:
-        raise HTTPException(
-            status_code=400,
-            detail='コンシューマーディレクトリが存在しません。'
-        )
+def get_consumer_headers(consumer_id :str = Header(settings.ANONYMOUS_CONSUMER_NAME, alias=settings.HTTP_HEADER_CONSUMER_ID)) -> ConsumerHeaders:
+    return ConsumerHeaders(consumer_id=consumer_id)
 
-def get_audiofile_path(audiofile_id: str, consumer_id: str = Header(settings.ANONYMOUS_CONSUMER_NAME, alias=settings.HTTP_HEADER_CONSUMER_ID)):
-    consumer_dir = get_consumer_dir(consumer_id)
-    audiofile_path = consumer_dir / audiofile_id / (audiofile_id + '.wav')
-    if os.path.exists(audiofile_path):
-        return audiofile_path
+def get_consumer(consumer_headers: ConsumerHeaders = Depends(get_consumer_headers)) -> Consumer:
+    consumer_dir = Path(settings.CONSUMER_VOLUME_PATH, consumer_headers.consumer_id)
+    return Consumer(**consumer_headers.model_dump(), consumer_directory=consumer_dir)
+
+def validate_audiofile(file: UploadFile = File(...)) -> UploadFile:
+    if file.content_type not in settings.UPLOAD_FILE_CONTENT_TYPE:
+            raise HTTPException(
+                status_code=400,
+                detail=f'{file.content_type} 形式はサポートしていません'
+            )
     else:
-        raise HTTPException(
-            status_code=400,
-            detail='ディレクトリまたは音声ファイルが存在しません。'
-        )
+        return file
+
+def get_audiofile(audiofile_id: str = fastapi_path(...), audiofile: Audiofile = Depends(get_consumer)) -> Audiofile:
+    audiofile_dir = Path(audiofile.consumer_directory, audiofile_id)
+    audiofile_path = audiofile_dir / (f'{audiofile_id}.wav')
+    return Audiofile(**audiofile.model_dump(), audiofile_id=audiofile_id, audiofile_directory=audiofile_dir, audiofile_path=audiofile_path)
 
 def get_asyncio_redis_conn() -> redis.asyncio.Redis:
     return redis.asyncio.Redis(

@@ -5,14 +5,15 @@ from pathlib import Path
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sse_starlette import EventSourceResponse
 import redis.asyncio
-from app.api.deps import get_asyncio_redis_conn, get_audiofile_path
+from app.api.deps import get_asyncio_redis_conn, get_audiofile
 from app.core.heavy_job import HeavyJob
 from app.core.config import settings
+from app.models import Audiofile
 
 router = APIRouter()
 
-@router.post("/lyric")
-def analyze_lyric(request: Request, audiofile_path: Path = Depends(get_audiofile_path), r_asyncio: redis.asyncio.Redis = Depends(get_asyncio_redis_conn)) -> EventSourceResponse:
+@router.post("/lyric/{audiofile_id}")
+def analyze_lyric(request: Request, audiofile: Audiofile = Depends(get_audiofile), r_asyncio: redis.asyncio.Redis = Depends(get_asyncio_redis_conn)) -> EventSourceResponse:
     job_router = HeavyJob(
         redis_host=settings.REDIS_HOST, 
         redis_port=settings.REDIS_PORT, 
@@ -23,17 +24,17 @@ def analyze_lyric(request: Request, audiofile_path: Path = Depends(get_audiofile
     now = datetime.now()
     print(now)
     
-    if os.path.exists(audiofile_path.parent / 'lyric.txt'):
+    if os.path.exists(audiofile.audiofile_directory / 'lyric.txt'):
         raise HTTPException(
             status_code=400,
             detail='既に歌詞解析がされています。'
         )
-    if not os.path.exists(audiofile_path.parent / 'separated'):
+    if not os.path.exists(audiofile.audiofile_directory / 'separated'):
         raise HTTPException(
             status_code=400,
             detail='音声の分離結果が見つかりませんでした。解析には音声の分離結果が必要です。'
         )
-    request_body = {'file_path': str(audiofile_path.parent / 'separated' / 'vocals.wav')}
+    request_body = {'file_path': str(audiofile.audiofile_directory / 'separated' / 'vocals.wav')}
     return EventSourceResponse(
         job_router.stream(
             request=request, 
@@ -46,7 +47,7 @@ def analyze_lyric(request: Request, audiofile_path: Path = Depends(get_audiofile
         )
     )
 
-@router.get('/lyric')
-def response_lyric(audiofile_path: Path = Depends(get_audiofile_path)):
-    with open(audiofile_path.parent / 'lyric.txt') as f:
+@router.get('/lyric/{audiofile_id}')
+def response_lyric(audiofile: Audiofile = Depends(get_audiofile)):
+    with open(audiofile.audiofile_directory / 'lyric.txt') as f:
         return json.load(f)
