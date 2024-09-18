@@ -2,7 +2,7 @@ from datetime import datetime
 import json
 import os
 from typing import Literal
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import FileResponse
 from sse_starlette import EventSourceResponse
 import redis.asyncio
@@ -59,7 +59,7 @@ def adjust_chord_timing(request: Request, audiofile: Audiofile = Depends(get_aud
         )
 
 @router.get('/chord/{audiofile_id}')
-def response_lyric(audiofile: Audiofile = Depends(get_audiofile), download: bool = False, download_file_format: Literal['json', 'csv'] = 'json'):
+def response_lyric(audiofile: Audiofile = Depends(get_audiofile), download: bool = False, download_file_format: Literal['json', 'csv'] = Query('json', alias='download-file-format')):
     try:
         if download:
             return FileResponse(
