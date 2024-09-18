@@ -55,6 +55,7 @@ def separate(body: FilePathBody):
     print(f"end:{end_time}, duration:{duration}")
     
     for stem, source in separated.items():
+        if stem == 'other': stem = 'other_6s'
         demucs.api.save_audio(source, save_dir_path / f'{stem}.wav', separator.samplerate)
 
     return {"end":end_time}

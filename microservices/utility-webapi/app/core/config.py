@@ -30,6 +30,17 @@ class Settings(BaseSettings):
     WHISPER_WEBAPI_CONNECT_TIMEOUT: Union[int, float] | None = 3
     WHISPER_WEBAPI_READ_TIMEOUT: Union[int, float] | None = 60
 
+    ALLIN1_WEBAPI_HOST: str = 'allin1-webapi'
+    ALLIN1_WEBAPI_PORT: int = 8000
+
+    ALLIN1_WEBAPI_SPECTROGRAMS_JOB_TIMEOUT : Union[int, float] | None = 60
+    ALLIN1_WEBAPI_SPECTROGRAMS_CONNECT_TIMEOUT: Union[int, float] | None = 3
+    ALLIN1_WEBAPI_SPECTROGRAMS_READ_TIMEOUT: Union[int, float] | None = 60
+
+    ALLIN1_WEBAPI_STRUCTURE_JOB_TIMEOUT : Union[int, float] | None = 60
+    ALLIN1_WEBAPI_STRUCTURE_CONNECT_TIMEOUT: Union[int, float] | None = 3
+    ALLIN1_WEBAPI_STRUCTURE_READ_TIMEOUT: Union[int, float] | None = 60
+
     UPLOAD_FILE_CONTENT_TYPE: list[str] = ['audio/mpeg', 'audio/wav']
 
     HTTP_HEADER_CONSUMER_ID: str = 'x_consumer_id'

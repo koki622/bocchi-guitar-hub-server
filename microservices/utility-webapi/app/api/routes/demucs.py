@@ -108,6 +108,8 @@ def zip_separated_audio(request: Request, audiofile: Audiofile = Depends(get_aud
     separated_path = audiofile.audiofile_directory / 'separated'
     with tempfile.TemporaryDirectory() as tmp_dir:
             for f in os.listdir(separated_path):
+                if f == 'other.wav':
+                    continue
                 wav_audio = AudioSegment.from_wav(separated_path / f)
                 wav_audio.export(Path(tmp_dir) / (Path(f).stem + '.mp3'), format='mp3')
             shutil.make_archive(separated_path, 'zip', tmp_dir)
