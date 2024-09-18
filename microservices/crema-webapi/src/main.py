@@ -1,5 +1,8 @@
+import csv
 from datetime import datetime
 from contextlib import asynccontextmanager
+import json
+from pathlib import Path
 from typing import Annotated
 from crema.analyze import analyze, _load_models
 from tempfile import NamedTemporaryFile
@@ -32,19 +35,40 @@ def read_root():
 
 @app.post("/")
 def analyze_chord(body: FilePathBody):
-    # fileの拡張子を取得
-    #file_extention = os.path.splitext(file.filename)[1]
     file_path = body.file_path
     now = datetime.now()
     print(f"処理開始:{now}")
-    """
-    with NamedTemporaryFile(delete=True, dir="../input", suffix=file_extention) as t:
-        temp_file_path = t.name
-        shutil.copyfileobj(file.file, t)
-
-        jam = analyze(filename=temp_file_path)
-    """
+    
     jam = analyze(filename=file_path)
+    json_result = []
+    csv_result = []
+    csv_header = ['Time', 'Duration', 'Value']
+    annotations = jam.search(namespace='chord')
+    for annotation in annotations:
+        for obs in annotation.data:
+            result_dict = {
+                'Time': obs.time,
+                'Duration': obs.duration,
+                'Value': obs.value
+            }
+            json_result.append(result_dict)
+            row = [
+                obs.time,
+                obs.duration,
+                obs.value
+            ]
+            csv_result.append(row)
+
+    with open(Path(file_path).parent / 'chord.json', 'w', encoding='utf-8') as f:
+        json.dump(json_result, f)
+
+    with open(Path(file_path).parent / 'chord.csv', 'w', newline='') as f:
+        writer = csv.writer(f)
+        # ヘッダーを書き込む
+        writer.writerow(csv_header)
+        # データを書き込む
+        writer.writerows(csv_result)
+
     end_time = datetime.now()
     duration = end_time - now
     print(f"end:{end_time}, duration:{duration}")
