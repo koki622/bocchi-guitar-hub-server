@@ -1,6 +1,6 @@
 from datetime import datetime
 from pathlib import Path
-from fastapi import APIRouter, HTTPException, Header, Request, Depends
+from fastapi import APIRouter, HTTPException, Request, Depends
 from fastapi.responses import FileResponse
 import redis.asyncio
 import os
@@ -21,8 +21,9 @@ def separate(request: Request, audiofile: Audiofile = Depends(get_audiofile), r_
         redis_host=settings.REDIS_HOST, 
         redis_port=settings.REDIS_PORT, 
         redis_asyncio_conn=r_asyncio, 
-        dst_api_host=settings.DEMUCS_WEBAPI_HOST, 
-        dst_api_port=settings.DEMUCS_WEBAPI_PORT
+        dst_api_host=settings.demucs_webapi.host,
+        dst_api_port=settings.demucs_webapi.port,
+        dst_api_connect_timeout=settings.demucs_webapi.connect_timeout
     )
     now = datetime.now()
     print(now)
@@ -36,12 +37,11 @@ def separate(request: Request, audiofile: Audiofile = Depends(get_audiofile), r_
     return EventSourceResponse(
         job_router.stream(
             request=request, 
-            queue_name='gpu_queue',
-            job_timeout=settings.DEMUCS_WEBAPI_JOB_TIMEOUT,
+            queue_name=settings.demucs_webapi_job.queue,
+            job_timeout=settings.demucs_webapi_job.timeout,
             request_path='/',
             request_body=request_body,
-            request_connect_timeout=settings.DEMUCS_WEBAPI_CONNECT_TIMEOUT,
-            request_read_timeout=settings.DEMUCS_WEBAPI_READ_TIMEOUT
+            request_read_timeout=settings.demucs_webapi_job.read_timeout
         )
     )
 
@@ -60,19 +60,19 @@ def response_separated_audio(request: Request, audiofile: Audiofile = Depends(ge
         redis_host=settings.REDIS_HOST, 
         redis_port=settings.REDIS_PORT, 
         redis_asyncio_conn=r_asyncio, 
-        dst_api_host='localhost', 
-        dst_api_port=8000
+        dst_api_host=settings.compression_webapi.host, 
+        dst_api_port=settings.compression_webapi.port,
+        dst_api_connect_timeout=settings.compression_webapi.connect_timeout
         )
     
         return EventSourceResponse(
             job_router.stream(
                 request=request, 
-                queue_name='cpu_queue',
-                job_timeout=60,
+                queue_name=settings.compression_webapi_job.queue,
+                job_timeout=settings.compression_webapi_job.timeout,
                 request_path=f'/demucs/separated-audio/{audiofile.audiofile_id}/zip',
                 request_headers={settings.HTTP_HEADER_CONSUMER_ID:audiofile.consumer_id},
-                request_connect_timeout=3,
-                request_read_timeout=60
+                request_read_timeout=settings.compression_webapi_job.read_timeout
             )
         )
         

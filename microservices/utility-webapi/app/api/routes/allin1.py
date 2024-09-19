@@ -20,8 +20,9 @@ def spectrograms(request: Request, audiofile: Audiofile = Depends(get_audiofile)
         redis_host=settings.REDIS_HOST, 
         redis_port=settings.REDIS_PORT, 
         redis_asyncio_conn=r_asyncio, 
-        dst_api_host=settings.ALLIN1_WEBAPI_HOST, 
-        dst_api_port=settings.ALLIN1_WEBAPI_PORT
+        dst_api_host=settings.allin1_webapi.host,
+        dst_api_port=settings.allin1_webapi.port,
+        dst_api_connect_timeout=settings.allin1_webapi.connect_timeout
     )
     now = datetime.now()
     print(now)
@@ -53,12 +54,11 @@ def spectrograms(request: Request, audiofile: Audiofile = Depends(get_audiofile)
     return EventSourceResponse(
         job_router.stream(
             request=request, 
-            queue_name='cpu_queue',
-            job_timeout=settings.ALLIN1_WEBAPI_SPECTROGRAMS_JOB_TIMEOUT,
+            queue_name=settings.allin1_webapi_job_spectrograms.queue,
+            job_timeout=settings.allin1_webapi_job_spectrograms.timeout,
             request_path='/spectrograms',
             request_body=request_body,
-            request_connect_timeout=settings.ALLIN1_WEBAPI_SPECTROGRAMS_CONNECT_TIMEOUT,
-            request_read_timeout=settings.ALLIN1_WEBAPI_SPECTROGRAMS_READ_TIMEOUT
+            request_read_timeout=settings.allin1_webapi_job_spectrograms.read_timeout
         )
     )
 
@@ -68,8 +68,9 @@ def analyze_structure(request: Request, audiofile: Audiofile = Depends(get_audio
         redis_host=settings.REDIS_HOST, 
         redis_port=settings.REDIS_PORT, 
         redis_asyncio_conn=r_asyncio, 
-        dst_api_host=settings.ALLIN1_WEBAPI_HOST, 
-        dst_api_port=settings.ALLIN1_WEBAPI_PORT
+        dst_api_host=settings.allin1_webapi.host,
+        dst_api_port=settings.allin1_webapi.port,
+        dst_api_connect_timeout=settings.allin1_webapi.connect_timeout
     )
     now = datetime.now()
     print(now)
@@ -88,12 +89,11 @@ def analyze_structure(request: Request, audiofile: Audiofile = Depends(get_audio
     return EventSourceResponse(
         job_router.stream(
             request=request, 
-            queue_name='gpu_queue',
-            job_timeout=settings.ALLIN1_WEBAPI_STRUCTURE_JOB_TIMEOUT,
+            queue_name=settings.allin1_webapi_job_structure.queue,
+            job_timeout=settings.allin1_webapi_job_structure.timeout,
             request_path='/structure',
             request_body=request_body,
-            request_connect_timeout=settings.ALLIN1_WEBAPI_STRUCTURE_CONNECT_TIMEOUT,
-            request_read_timeout=settings.ALLIN1_WEBAPI_STRUCTURE_READ_TIMEOUT
+            request_read_timeout=settings.allin1_webapi_job_structure.read_timeout
         )
     )
 

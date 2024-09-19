@@ -18,8 +18,9 @@ def analyze_lyric(request: Request, audiofile: Audiofile = Depends(get_audiofile
         redis_host=settings.REDIS_HOST, 
         redis_port=settings.REDIS_PORT, 
         redis_asyncio_conn=r_asyncio, 
-        dst_api_host=settings.WHISPER_WEBAPI_HOST, 
-        dst_api_port=settings.WHISPER_WEBAPI_PORT
+        dst_api_host=settings.whisper_webapi.host,
+        dst_api_port=settings.whisper_webapi.port,
+        dst_api_connect_timeout=settings.whisper_webapi.connect_timeout
     )
     now = datetime.now()
     print(now)
@@ -38,12 +39,11 @@ def analyze_lyric(request: Request, audiofile: Audiofile = Depends(get_audiofile
     return EventSourceResponse(
         job_router.stream(
             request=request, 
-            queue_name='gpu_queue',
-            job_timeout=settings.WHISPER_WEBAPI_JOB_TIMEOUT,
+            queue_name=settings.whisper_webapi_job.queue,
+            job_timeout=settings.whisper_webapi_job.timeout,
             request_path='/',
             request_body=request_body,
-            request_connect_timeout=settings.WHISPER_WEBAPI_CONNECT_TIMEOUT,
-            request_read_timeout=settings.WHISPER_WEBAPI_READ_TIMEOUT
+            request_read_timeout=settings.whisper_webapi_job.read_timeout
         )
     )
 

@@ -1,10 +1,27 @@
+from pydantic import BaseModel, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing_extensions import Union
+from redis import Redis
+
+TimeoutType = Union[int, float] | None
+
+# WEB APIごとのジョブキュー設定用のクラス
+class WebAPISettings(BaseModel):
+    host: str
+    port: int = Field(default=8000, ge=1, le=65535)
+    connect_timeout: TimeoutType = 3
+    
+
+class WebAPIJobSettings(WebAPISettings):
+    queue: str
+    timeout: TimeoutType = 60 # ジョブが実行されてからのタイムアウト時間
+    read_timeout: TimeoutType = 60 # webapiと接続が確立されてからのタイムアウト時間
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         env_file=".env", env_ignore_empty=True, extra="ignore"
     )
+
     ANONYMOUS_CONSUMER_NAME: str = 'anonymous'
     
     CONSUMER_VOLUME_PATH: str
@@ -12,34 +29,62 @@ class Settings(BaseSettings):
     REDIS_HOST: str = 'redis'
     REDIS_PORT: int = 6379
 
-    DEMUCS_WEBAPI_HOST: str = 'demucs-webapi'
-    DEMUCS_WEBAPI_PORT: int = 8000
-    DEMUCS_WEBAPI_JOB_TIMEOUT : Union[int, float] | None = 60
-    DEMUCS_WEBAPI_CONNECT_TIMEOUT: Union[int, float] | None = 3
-    DEMUCS_WEBAPI_READ_TIMEOUT: Union[int, float] | None = 60
+    # demucs-webapiの設定
+    demucs_webapi: WebAPISettings = WebAPISettings(
+        host='demucs-webapi'
+    )
+    # demucs-webapiのジョブキュー設定
+    demucs_webapi_job: WebAPIJobSettings = WebAPIJobSettings(
+        **demucs_webapi.model_dump(),
+        queue='gpu_queue'
+    )
 
-    CREMA_WEBAPI_HOST: str = 'crema-webapi'
-    CREMA_WEBAPI_PORT: int = 8000
-    CREMA_WEBAPI_JOB_TIMEOUT : Union[int, float] | None = 60
-    CREMA_WEBAPI_CONNECT_TIMEOUT: Union[int, float] | None = 3
-    CREMA_WEBAPI_READ_TIMEOUT: Union[int, float] | None = 60
+    # crema-webapiの設定
+    crema_webapi: WebAPISettings = WebAPISettings(
+        host='crema-webapi'
+    )
+    # crema-webapiのジョブキュー設定
+    crema_webapi_job: WebAPIJobSettings = WebAPIJobSettings(
+        **crema_webapi.model_dump(),
+        queue='cpu_queue'
+    )
 
-    WHISPER_WEBAPI_HOST: str = 'faster-whisper-webapi'
-    WHISPER_WEBAPI_PORT: int = 8000
-    WHISPER_WEBAPI_JOB_TIMEOUT : Union[int, float] | None = 60
-    WHISPER_WEBAPI_CONNECT_TIMEOUT: Union[int, float] | None = 3
-    WHISPER_WEBAPI_READ_TIMEOUT: Union[int, float] | None = 60
+    # whisper-webapiの設定
+    whisper_webapi: WebAPISettings = WebAPISettings(
+        host='faster-whisper-webapi'
+    )
+    # whisper-webapiのジョブキュー設定
+    whisper_webapi_job: WebAPIJobSettings = WebAPIJobSettings(
+        **whisper_webapi.model_dump(),
+        queue='gpu_queue'
+    )
 
-    ALLIN1_WEBAPI_HOST: str = 'allin1-webapi'
-    ALLIN1_WEBAPI_PORT: int = 8000
+    # allin1-webapiの設定
+    allin1_webapi: WebAPISettings = WebAPISettings(
+        host='allin1-webapi'
+    )
 
-    ALLIN1_WEBAPI_SPECTROGRAMS_JOB_TIMEOUT : Union[int, float] | None = 60
-    ALLIN1_WEBAPI_SPECTROGRAMS_CONNECT_TIMEOUT: Union[int, float] | None = 3
-    ALLIN1_WEBAPI_SPECTROGRAMS_READ_TIMEOUT: Union[int, float] | None = 60
+    # allin1-webapiのスペクトログラム解析のジョブキュー設定
+    allin1_webapi_job_spectrograms: WebAPIJobSettings = WebAPIJobSettings(
+        **allin1_webapi.model_dump(),
+        queue='cpu_queue'
+    )
 
-    ALLIN1_WEBAPI_STRUCTURE_JOB_TIMEOUT : Union[int, float] | None = 60
-    ALLIN1_WEBAPI_STRUCTURE_CONNECT_TIMEOUT: Union[int, float] | None = 3
-    ALLIN1_WEBAPI_STRUCTURE_READ_TIMEOUT: Union[int, float] | None = 60
+    # allin1-webapiの構造解析のジョブキュー設定
+    allin1_webapi_job_structure: WebAPIJobSettings = WebAPIJobSettings(
+        **allin1_webapi.model_dump(), 
+        queue='gpu_queue'
+    )
+
+    # zip圧縮webapiの設定
+    compression_webapi: WebAPISettings = WebAPISettings(
+        host='localhost'
+    )
+    # zip圧縮webapiのジョブキュー設定
+    compression_webapi_job: WebAPIJobSettings = WebAPIJobSettings(
+        **compression_webapi.model_dump(),
+        queue='cpu_queue'
+    )
 
     UPLOAD_FILE_CONTENT_TYPE: list[str] = ['audio/mpeg', 'audio/wav']
 

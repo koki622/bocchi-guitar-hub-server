@@ -91,13 +91,15 @@ class HeavyJob:
         redis_port: int,
         redis_asyncio_conn: redis.asyncio.Redis,
         dst_api_host: str, 
-        dst_api_port: int
+        dst_api_port: int,
+        dst_api_connect_timeout: Union[int, float] = None,
     ):
         self.redis_host = redis_host
         self.redis_port = redis_port
         self.redis_asyncio_conn = redis_asyncio_conn
         self.dst_api_host = dst_api_host
         self.dst_api_port = dst_api_port
+        self.dst_api_conenect_timeout = dst_api_connect_timeout
 
     async def response_queue_status_from_stream (
             self, 
@@ -177,7 +179,6 @@ class HeavyJob:
         request_path: str = "/",
         request_headers: dict = None,
         request_body: dict = None, 
-        request_connect_timeout: Union[int, float] = None,
         request_read_timeout: Union[int, float] = None
     ):
         redis_conn = Redis(self.redis_host, self.redis_port)
@@ -186,10 +187,10 @@ class HeavyJob:
         job_kwargs = {
             "dst_api_host": self.dst_api_host,
             "dst_api_port": self.dst_api_port,
+            "connect_timeout": self.dst_api_conenect_timeout,
             "path": request_path, 
             'headers':request_headers,
             "payload": request_body, 
-            "connect_timeout": request_connect_timeout,
             "read_timeout": request_read_timeout
         }
         

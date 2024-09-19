@@ -19,8 +19,9 @@ def analyze_chord(request: Request, audiofile: Audiofile = Depends(get_audiofile
         redis_host=settings.REDIS_HOST, 
         redis_port=settings.REDIS_PORT, 
         redis_asyncio_conn=r_asyncio, 
-        dst_api_host=settings.CREMA_WEBAPI_HOST, 
-        dst_api_port=settings.CREMA_WEBAPI_PORT
+        dst_api_host=settings.crema_webapi.host,
+        dst_api_port=settings.crema_webapi.port,
+        dst_api_connect_timeout=settings.crema_webapi.connect_timeout
     )
     now = datetime.now()
     print(now)
@@ -35,12 +36,11 @@ def analyze_chord(request: Request, audiofile: Audiofile = Depends(get_audiofile
     return EventSourceResponse(
         job_router.stream(
             request=request, 
-            queue_name='cpu_queue',
-            job_timeout=settings.CREMA_WEBAPI_JOB_TIMEOUT,
+            queue_name=settings.crema_webapi_job.queue,
+            job_timeout=settings.crema_webapi_job.timeout,
             request_path='/',
             request_body=request_body,
-            request_connect_timeout=settings.CREMA_WEBAPI_CONNECT_TIMEOUT,
-            request_read_timeout=settings.CREMA_WEBAPI_READ_TIMEOUT    
+            request_read_timeout=settings.crema_webapi_job.read_timeout
         )
     )
 
