@@ -1,7 +1,6 @@
 import asyncio
 from redis import Redis
 import redis.asyncio
-import redis.asyncio
 import redis.client
 from rq import Queue, Callback
 from rq.job import Job
@@ -12,7 +11,6 @@ from requests.exceptions import Timeout
 import json
 from typing import Literal, Union
 from fastapi import Request
-import time
 from datetime import datetime, timezone
 from collections.abc import AsyncGenerator
 
@@ -128,38 +126,6 @@ class HeavyJob:
             if is_finished: 
                 break
             
-    """
-    async def response_queue_status(self, request: Request, pubsub_channel: str, pubsub_id: str , queue_position: Union[int, None]):
-        async def job_reader(
-            request: Request, 
-            channel: redis.client.PubSub,
-            pubsub_id: str, 
-            queue_position: int = None
-        ):
-            if queue_position is None:
-                yield {"data": "処理しています"}
-            else:
-                yield {"data": f"現在のキュー:{queue_position}"}  
-
-            while True:
-                if await request.is_disconnected():
-                    break
-                
-                message = await channel.get_message(ignore_subscribe_messages=True)
-                if message is not None:
-                    #yield{"data":message}
-                    result, src_pubsub_id = message["data"].split(':')
-                    if src_pubsub_id == pubsub_id:
-                        break
-                    queue_position -= 1
-                    yield {"data": f"現在のキュー:{queue_position}"}
-
-        async with self.redis_asyncio_conn.pubsub() as pubsub:
-            # ジョブの待ち状況を取得
-            await pubsub.subscribe(pubsub_channel)
-            async for message in job_reader(request, pubsub, pubsub_id, queue_position):
-                yield {"data": f"{message['data']}"}
-    """
     def generate_job_status_message(self, job_id: str, job_status: Literal['processing soon', 'queued', 'enqueue success'], queue_position: int = None) -> dict:
         print(job_status)
         return {
