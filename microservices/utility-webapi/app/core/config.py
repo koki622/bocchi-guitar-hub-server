@@ -17,6 +17,10 @@ class WebAPIJobSettings(WebAPISettings):
     timeout: TimeoutType = 60 # ジョブが実行されてからのタイムアウト時間
     read_timeout: TimeoutType = 60 # webapiと接続が確立されてからのタイムアウト時間
 
+class JobWorkerSettings(BaseModel):
+    queue: str
+    multiplicity: int # ワーカーの起動数
+
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         env_file=".env", env_ignore_empty=True, extra="ignore"
@@ -84,6 +88,16 @@ class Settings(BaseSettings):
     compression_webapi_job: WebAPIJobSettings = WebAPIJobSettings(
         **compression_webapi.model_dump(),
         queue='cpu_queue'
+    )
+
+    gpu_worker: JobWorkerSettings = JobWorkerSettings(
+        queue='gpu_queue',
+        multiplicity=1
+    )
+
+    cpu_worker: JobWorkerSettings = JobWorkerSettings(
+        queue='cpu_queue',
+        multiplicity=1
     )
 
     UPLOAD_FILE_CONTENT_TYPE: list[str] = ['audio/mpeg', 'audio/wav']

@@ -1,16 +1,18 @@
 from fastapi import FastAPI
 from contextlib import asynccontextmanager
-import subprocess
 
 import uvicorn
 
+from app.worker import launch_workers
 from app.api.main import api_router
+from app.core.config import settings
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    subprocess.Popen(["python3", "worker_gpu.py"])
-    subprocess.Popen(["python3", "worker_cpu.py"])
-    subprocess.Popen(["python3", "worker_cpu2.py"])
+    gpu_worker = settings.gpu_worker
+    cpu_worker = settings.cpu_worker
+    launch_workers(queue_name=gpu_worker.queue, worker_multiplicity=gpu_worker.multiplicity)
+    launch_workers(queue_name=cpu_worker.queue, worker_multiplicity=cpu_worker.multiplicity)
     yield
     
 app = FastAPI(
