@@ -47,8 +47,8 @@ def analyze_chord(body: FilePathBody):
     for annotation in annotations:
         for obs in annotation.data:
             result_dict = {
-                'Time': obs.time,
-                'Duration': obs.duration,
+                'Time': round(obs.time, 2),
+                'Duration': round(obs.duration, 2),
                 'Value': obs.value
             }
             json_result.append(result_dict)
