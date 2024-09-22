@@ -10,6 +10,8 @@ from app.api.deps import get_asyncio_redis_conn, get_audiofile
 from app.core.heavy_job import HeavyJob
 from app.models import Audiofile
 from app.core.config import settings
+from app.services.adjust_chord import adjust_chord_time
+from app.services.chord_service import load_chords_from_json
 
 router = APIRouter()
 
@@ -52,14 +54,23 @@ def adjust_chord_timing(request: Request, audiofile: Audiofile = Depends(get_aud
             detail='コード進行の解析結果が見つかりませんでした。'
         )
     
-    if not os.path.exists(audiofile.audiofile_directory / 'beat.txt'):
+    if not os.path.exists(audiofile.audiofile_directory / 'structure' / 'structure.json'):
         raise HTTPException(
             status_code=400,
             detail='ビートの解析結果が見つかりませんでした。'
         )
 
+    chords = load_chords_from_json(audiofile.audiofile_directory / 'chord.json')
+    beats = []
+    with open(audiofile.audiofile_directory / 'structure' / 'structure.json') as f:
+            structure = json.load(f)
+            beats = structure.get('beats')
+    
+    adjusted_chords = adjust_chord_time(beats, chords)
+    return adjusted_chords
+
 @router.get('/chord/{audiofile_id}')
-def response_lyric(audiofile: Audiofile = Depends(get_audiofile), download: bool = False, download_file_format: Literal['json', 'csv'] = Query('json', alias='download-file-format')):
+def response_chord(audiofile: Audiofile = Depends(get_audiofile), download: bool = False, download_file_format: Literal['json', 'csv'] = Query('json', alias='download-file-format')):
     try:
         if download:
             return FileResponse(
