@@ -18,7 +18,7 @@ from distutils.dir_util import mkpath
 async def lifespan(app: FastAPI):
     global model
     print("modelロードします")
-    model = load_pretrained_model("harmonix-all", device="cuda")
+    model = load_pretrained_model() # model_nameにharmonix-allを使用するとlemonの最初の部分のビートがうまく認識されなかった
     print("modelロード完了")
     yield
     print("shutdown")
