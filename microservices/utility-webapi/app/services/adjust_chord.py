@@ -18,11 +18,11 @@
 
     ```python
     beat_times = [3.11, 3.82, 4.48, 5.17, 5.86, 6.53, 7.23, 7.93, 8.62, 9.3]
-    chords = [
+    chords = ChordList([
         Chord(time = 0, duration = 3.07, value = 'N'),
         Chord(time = 3.07, duration = 1.39, value = "G#:min"),
         Chord(time = 4.46, duration = 1.39, value = "F#:maj"),
-    ]
+    ])
     adjusted_chords = adjust_chord_timing(beat_times, chords)
     print(adjusted_chords)
     ```
@@ -30,11 +30,11 @@
     上記のコードを実行すると、以下のような出力が得られます:
 
     ```python
-    [
-        Chord(time = 0, duration = 3.11, value = 'N'),
-        Chord(time = 3.11, duration = 1.37, value = 'G#:min),
-        Chord(time = 4.48, duration = 1.38, value = 'F#:maj)
-    ]
+    AdjustedChordList([
+        AdjustedChord(time = 0, duration = 3.11, value = 'N'),
+        AdjustedChord(time = 3.11, duration = 1.37, value = 'G#:min),
+        AdjustedChord(time = 4.48, duration = 1.38, value = 'F#:maj)
+    ])
     ```
 
     この結果は、各コードの開始時刻が最も近いビートに調整され、各コードの持続時間が次のコードの開始時刻またはビートまでの時間で計算されたことを示しています。
@@ -42,7 +42,7 @@
 
 from typing import List, Tuple
 
-from app.services.chord_service import AdjustedChord, Chord
+from app.models import AdjustedChord, AdjustedChordList, ChordList
 
 def calculate_average_beat_interval(beat_times: List[float]) -> float:
     """全ビート間の平均インターバルを計算します。
@@ -97,17 +97,17 @@ def closest_beat_time(
 
 def adjust_chord_time(
         beat_times: List[float], 
-        chords: List[Chord]
-) -> List[AdjustedChord]:
+        chords: ChordList
+) -> AdjustedChordList:
     """コードのタイミングを最も近いビートに合わせて調整します。
 
     Args:
         beat_times (List[float]): ビートの時間のリスト。
-        chords (List[Chord]): コードの時間、持続時間、コード名を含むChordクラスのリスト。
+        chords (ChordList): コードの時間、持続時間、コード名を含むChordクラスのリスト。
 
     Returns:
-        List[AdjustedChord]: 調整されたコードのタイミングと持続時間、コード名に加えて
-        調整されたかどうかを示すブール値を含むAdjustedChordクラスのリストを返します。
+        AdjustedChordList: 調整されたコードのタイミングと持続時間、コード名に加えて
+        調整されたかどうかを示すブール値を含むAdjustedChordのリストを格納したAdjustedChordListを返します。
     """
     adjusted_chords = []
     remaining_beats = beat_times.copy() # 残りのビート
@@ -115,7 +115,7 @@ def adjust_chord_time(
     # ビートの平均間隔を計算
     average_beat_interval = calculate_average_beat_interval(beat_times)
 
-    for i, chord in enumerate(chords):
+    for i, chord in enumerate(chords.chords):
         
         # コードの開始時刻を最も近いビートに合わせる
         adjusted_time, was_adjusted = closest_beat_time(chord.time, remaining_beats, average_beat_interval)
@@ -123,9 +123,9 @@ def adjust_chord_time(
         # adjusted_time以下のビートをすべて削除
         remaining_beats = [beat for beat in remaining_beats if beat > adjusted_time]
 
-        if i < len(chords) - 1:
+        if i < len(chords.chords) - 1:
             # 次のコードの開始時刻を探す
-            next_time, _ = closest_beat_time(chords[i + 1].time, remaining_beats, average_beat_interval)
+            next_time, _ = closest_beat_time(chords.chords[i + 1].time, remaining_beats, average_beat_interval)
         else:
             # 最後のコードの場合、ビートリストの最大値を使用
             next_time = max(beat_times)
@@ -139,5 +139,5 @@ def adjust_chord_time(
             value = chord.value,
             was_adjusted = was_adjusted
         ))
-    return adjusted_chords
+    return AdjustedChordList(adjusted_chords=adjusted_chords)
 

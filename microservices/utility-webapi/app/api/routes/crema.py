@@ -1,5 +1,4 @@
 from datetime import datetime
-import json
 import os
 from typing import Literal
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
@@ -8,10 +7,9 @@ from sse_starlette import EventSourceResponse
 import redis.asyncio
 from app.api.deps import get_asyncio_redis_conn, get_audiofile
 from app.core.heavy_job import HeavyJob
-from app.models import Audiofile
+from app.models import Audiofile, ChordList, CsvConvertibleBase, Structure
 from app.core.config import settings
 from app.services.adjust_chord import adjust_chord_time
-from app.services.chord_service import load_chords_from_json
 
 router = APIRouter()
 
@@ -46,42 +44,50 @@ def analyze_chord(request: Request, audiofile: Audiofile = Depends(get_audiofile
         )
     )
 
-@router.post('/chord/{audiofile_id}/adjusted')
-def adjust_chord_timing(request: Request, audiofile: Audiofile = Depends(get_audiofile)):
-    if not os.path.exists(audiofile.audiofile_directory / 'chord.json'):
-        raise HTTPException(
-            status_code=400,
-            detail='コード進行の解析結果が見つかりませんでした。'
-        )
-    
-    if not os.path.exists(audiofile.audiofile_directory / 'structure' / 'structure.json'):
-        raise HTTPException(
-            status_code=400,
-            detail='ビートの解析結果が見つかりませんでした。'
-        )
-
-    chords = load_chords_from_json(audiofile.audiofile_directory / 'chord.json')
-    beats = []
-    with open(audiofile.audiofile_directory / 'structure' / 'structure.json') as f:
-            structure = json.load(f)
-            beats = structure.get('beats')
-    
-    adjusted_chords = adjust_chord_time(beats, chords)
-    return adjusted_chords
-
 @router.get('/chord/{audiofile_id}')
-def response_chord(audiofile: Audiofile = Depends(get_audiofile), download: bool = False, download_file_format: Literal['json', 'csv'] = Query('json', alias='download-file-format')):
+def response_chord(
+    audiofile: Audiofile = Depends(get_audiofile),
+    apply_adjust_chord: bool = Query(True, alias='apply-adjust-chord'), 
+    download_file_format: Literal['json', 'csv'] = Query('json', alias='download-file-format')
+):
+    chord_directory = audiofile.audiofile_directory / 'chord'
+
     try:
-        if download:
-            return FileResponse(
-                path=audiofile.audiofile_directory / f'chord.{download_file_format}',
-                headers={"Content-Disposition": f'attachment; filename={audiofile.audiofile_id}_chord.{download_file_format}'}
-            )
-        else:
-            with open(audiofile.audiofile_directory / 'chord.json') as f:
-                return json.load(f)
+        chords = ChordList.load_from_json_file(chord_directory / 'chord.json')
     except FileNotFoundError:
         raise HTTPException(
-            status_code=400,
+            status_code=404,
             detail='コード進行の解析結果が見つかりませんでした。'
         )
+    
+    chord_model: CsvConvertibleBase = None
+    file_stem = None
+    
+    if apply_adjust_chord:
+        try:
+            structure = Structure.load_from_json_file(audiofile.audiofile_directory / 'structure' / 'structure.json')
+        except FileNotFoundError:
+            raise HTTPException(
+                status_code=400,
+                detail='コードのタイミングを調整するには、音楽構造の解析結果が必要です。'
+            )
+        beats = structure.beats
+
+        # コードのタイミングを補正
+        adjusted_chords = adjust_chord_time(beats, chords)
+        adjusted_chords.save_as_json_file(chord_directory / 'adjusted_chord.json')
+
+        chord_model = adjusted_chords
+        file_stem = 'adjusted_chord'
+    else:
+        chord_model = chords
+        file_stem = 'chord'
+
+    if download_file_format == 'csv':
+        chord_model.to_csv(chord_directory / f'{file_stem}.csv')
+    
+    return FileResponse(
+                path=chord_directory / f'{file_stem}.{download_file_format}',
+                headers={"Content-Disposition": f'attachment; filename={audiofile.audiofile_id}_{file_stem}.{download_file_format}'}
+            )
+    

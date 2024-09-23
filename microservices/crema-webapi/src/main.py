@@ -40,34 +40,21 @@ def analyze_chord(body: FilePathBody):
     print(f"処理開始:{now}")
     
     jam = analyze(filename=file_path)
-    json_result = []
-    csv_result = []
-    csv_header = ['Time', 'Duration', 'Value']
+    json_result = {'chords': []}
+    
     annotations = jam.search(namespace='chord')
     for annotation in annotations:
         for obs in annotation.data:
             result_dict = {
-                'Time': round(obs.time, 2),
-                'Duration': round(obs.duration, 2),
-                'Value': obs.value
+                'time': round(obs.time, 2),
+                'duration': round(obs.duration, 2),
+                'value': obs.value
             }
-            json_result.append(result_dict)
-            row = [
-                obs.time,
-                obs.duration,
-                obs.value
-            ]
-            csv_result.append(row)
-
-    with open(Path(file_path).parent / 'chord.json', 'w', encoding='utf-8') as f:
+            json_result['chords'].append(result_dict)
+    save_dir = Path(file_path).parent / 'chord'
+    save_dir.mkdir()        
+    with open(save_dir / 'chord.json', 'w', encoding='utf-8') as f:
         json.dump(json_result, f)
-
-    with open(Path(file_path).parent / 'chord.csv', 'w', newline='') as f:
-        writer = csv.writer(f)
-        # ヘッダーを書き込む
-        writer.writerow(csv_header)
-        # データを書き込む
-        writer.writerows(csv_result)
 
     end_time = datetime.now()
     duration = end_time - now
