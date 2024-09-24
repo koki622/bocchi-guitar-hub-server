@@ -8,7 +8,7 @@ from sse_starlette import EventSourceResponse
 import redis.asyncio
 from app.api.deps import get_asyncio_redis_conn, get_audiofile
 from app.core.heavy_job import HeavyJob
-from app.models import Audiofile
+from app.models import Audiofile, Structure
 from app.core.config import settings
 from pydub import AudioSegment
 
@@ -98,23 +98,35 @@ def analyze_structure(request: Request, audiofile: Audiofile = Depends(get_audio
     )
 
 @router.get("/structure/{audiofile_id}")
-def response_structure(audiofile: Audiofile = Depends(get_audiofile), download: bool = False, download_file: Literal['beats', 'segments'] = Query(None, alias='download-file')):
+def response_structure(
+    audiofile: Audiofile = Depends(get_audiofile), 
+    download_file_format: Literal['json', 'csv'] = Query('json', alias='download-file-format'),
+    csv_data: Literal['beats', 'segments'] = Query(None, alias='csv-data')
+):
+    structure_directory = audiofile.audiofile_directory / 'structure'
     try:
-        if download:
-            if download_file is None:
-                raise HTTPException(
-                    status_code=400,
-                    detail='"download=True"の場合は、"download-file"の入力が必須です。(beats または segments)'
-                )
-            return FileResponse(
-                path=audiofile.audiofile_directory / 'structure' / f'{download_file}.txt',
-                headers={"Content-Disposition": f'attachment; filename={audiofile.audiofile_id}_{download_file}.txt'}
-            )
-        else:
-            with open(audiofile.audiofile_directory / 'structure' / 'structure.json') as f:
-                return json.load(f)
+        structure = Structure.load_from_json_file(structure_directory / 'structure.json')
     except FileNotFoundError:
         raise HTTPException(
-            status_code=400,
+            status_code=404,
             detail='結果が見つかりませんでした。'
         )
+    if download_file_format == 'csv':
+        if not csv_data:
+            raise HTTPException(
+                status_code=400,
+                detail='"download-file-format=csv"の場合は、"csv-data"の入力が必須です。(beats または segments)'
+            )
+        elif csv_data == 'beats':
+            stem = 'beats'
+            structure.to_csv(structure_directory / f'{stem}.csv', ['beats', 'beat_positions'])
+        elif csv_data == 'segments':
+            stem = 'segments'
+            structure.to_csv(structure_directory / f'{stem}.csv', ['segments'])
+    else:
+        stem = 'structure'
+    return FileResponse(
+        path=structure_directory / f'{stem}.{download_file_format}',
+        headers={"Content-Disposition": f'attachment; filename={audiofile.audiofile_id}_{stem}.{download_file_format}'}
+    )
+    

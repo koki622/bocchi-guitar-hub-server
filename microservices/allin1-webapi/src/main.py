@@ -65,7 +65,7 @@ def analyze_structure(body: StructureCreateBody):
     save_dir = Path(file_path.parent / 'structure')
     save_dir.mkdir()
     analysis_result_to_json(result, save_dir)
-    analysis_result_to_sonic_visualizer(result, save_dir)
+   
     end_time = datetime.now()
     duration = end_time - now
     print(f"end:{end_time}, duration:{duration}")
