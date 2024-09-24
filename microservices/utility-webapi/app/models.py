@@ -3,6 +3,7 @@ import os
 from pathlib import Path
 from typing import List
 from fastapi import HTTPException
+import numpy as np
 import pandas
 from pydantic import BaseModel, field_validator
 
@@ -108,7 +109,7 @@ class ChordList(JsonLoadableBase):
     chords: List[Chord]
 
 class AdjustedChordList(JsonLoadableBase):
-    adjusted_chords: List[AdjustedChord]
+    chords: List[AdjustedChord]
 
     def save_as_json_file(self, save_path: Path):
         json_data = self.model_dump_json()
@@ -126,3 +127,9 @@ class Structure(JsonLoadableBase):
     downbeats: List[float]
     beat_positions: List[int]
     segments: List[Segment]
+
+    def calculate_bpm(self) -> float:
+        avg_beat_duration = np.mean(np.diff(self.beats))
+        bpm = 60 / avg_beat_duration
+
+        return bpm

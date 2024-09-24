@@ -10,6 +10,7 @@ from app.core.heavy_job import HeavyJob
 from app.models import Audiofile, ChordList, CsvConvertibleBase, Structure
 from app.core.config import settings
 from app.services.adjust_chord import adjust_chord_time
+from app.services.midi_generator import convert_chords_to_midi
 
 router = APIRouter()
 
@@ -44,11 +45,17 @@ def analyze_chord(request: Request, audiofile: Audiofile = Depends(get_audiofile
         )
     )
 
+media_types = {
+    'json': 'application/json',
+    'csv': 'text/csv',
+    'mid': 'audio/midi'
+}
+
 @router.get('/chord/{audiofile_id}')
 def response_chord(
     audiofile: Audiofile = Depends(get_audiofile),
     apply_adjust_chord: bool = Query(True, alias='apply-adjust-chord'), 
-    download_file_format: Literal['json', 'csv'] = Query('json', alias='download-file-format')
+    download_file_format: Literal['json', 'csv', 'mid'] = Query('json', alias='download-file-format')
 ):
     chord_directory = audiofile.audiofile_directory / 'chord'
 
@@ -62,7 +69,8 @@ def response_chord(
     
     chord_model: CsvConvertibleBase = None
     file_stem = None
-    
+    structure = None
+
     if apply_adjust_chord:
         try:
             structure = Structure.load_from_json_file(audiofile.audiofile_directory / 'structure' / 'structure.json')
@@ -86,8 +94,14 @@ def response_chord(
     if download_file_format == 'csv':
         chord_model.to_csv(chord_directory / f'{file_stem}.csv')
     
+    if download_file_format == 'mid':
+        structure = structure if structure else Structure.load_from_json_file(audiofile.audiofile_directory / 'structure' / 'structure.json')
+        bpm = structure.calculate_bpm()
+        convert_chords_to_midi(chord_model.chords, bpm, chord_directory / f'{file_stem}.mid')
+
     return FileResponse(
                 path=chord_directory / f'{file_stem}.{download_file_format}',
+                media_type=media_types[download_file_format],
                 headers={"Content-Disposition": f'attachment; filename={audiofile.audiofile_id}_{file_stem}.{download_file_format}'}
             )
     

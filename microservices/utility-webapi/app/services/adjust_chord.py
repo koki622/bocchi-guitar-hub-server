@@ -75,6 +75,10 @@ def closest_beat_time(
         調整されたかどうかを示すフラグ。
         調整されなかった場合は元の時間を返し、Falseを返します。
     """
+
+    if not beat_times:
+        return time, False
+    
     closest_time = beat_times[0]
     min_diff = abs(closest_time - time)
 
@@ -122,13 +126,16 @@ def adjust_chord_time(
 
         # adjusted_time以下のビートをすべて削除
         remaining_beats = [beat for beat in remaining_beats if beat > adjusted_time]
-
+        
         if i < len(chords.chords) - 1:
             # 次のコードの開始時刻を探す
             next_time, _ = closest_beat_time(chords.chords[i + 1].time, remaining_beats, average_beat_interval)
         else:
-            # 最後のコードの場合、ビートリストの最大値を使用
-            next_time = max(beat_times)
+            # 最後のコードの場合
+            if not remaining_beats:
+                next_time = chord.time + chord.duration
+            else:
+                next_time = max(beat_times)
 
         # コードの時間の長さを計算
         adjusted_duration = round(next_time - adjusted_time, 2)
@@ -139,5 +146,5 @@ def adjust_chord_time(
             value = chord.value,
             was_adjusted = was_adjusted
         ))
-    return AdjustedChordList(adjusted_chords=adjusted_chords)
+    return AdjustedChordList(chords=adjusted_chords)
 
