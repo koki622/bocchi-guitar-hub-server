@@ -55,6 +55,7 @@ media_types = {
 def response_chord(
     audiofile: Audiofile = Depends(get_audiofile),
     apply_adjust_chord: bool = Query(True, alias='apply-adjust-chord'), 
+    eighth_beat: bool = Query(False, alias='eighth-beat'),
     download_file_format: Literal['json', 'csv', 'mid'] = Query('json', alias='download-file-format')
 ):
     chord_directory = audiofile.audiofile_directory / 'chord'
@@ -68,10 +69,11 @@ def response_chord(
         )
     
     chord_model: CsvConvertibleBase = None
-    file_stem = None
-    structure = None
+    structure_model = None
+    file_stem = ''
 
     if apply_adjust_chord:
+        file_stem += 'adjusted_'
         try:
             structure = Structure.load_from_json_file(audiofile.audiofile_directory / 'structure' / 'structure.json')
         except FileNotFoundError:
@@ -79,17 +81,23 @@ def response_chord(
                 status_code=400,
                 detail='コードのタイミングを調整するには、音楽構造の解析結果が必要です。'
             )
-        beats = structure.beats
+        if eighth_beat:
+            eighth_structure = structure.convert_splited_beats_into_eighths()
+            structure_model = eighth_structure
+            file_stem += 'eighth_beat_chord'
+        else:
+            structure_model = structure
+            file_stem += 'chord'
+        beats = structure_model.beats
 
         # コードのタイミングを補正
         adjusted_chords = adjust_chord_time(beats, chords)
-        adjusted_chords.save_as_json_file(chord_directory / 'adjusted_chord.json')
+        adjusted_chords.save_as_json_file(chord_directory / f'{file_stem}.json')
 
         chord_model = adjusted_chords
-        file_stem = 'adjusted_chord'
     else:
         chord_model = chords
-        file_stem = 'chord'
+        file_stem += 'chord'
 
     if download_file_format == 'csv':
         chord_model.to_csv(chord_directory / f'{file_stem}.csv')
