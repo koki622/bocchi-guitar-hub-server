@@ -101,11 +101,14 @@ def analyze_structure(request: Request, audiofile: Audiofile = Depends(get_audio
 def response_structure(
     audiofile: Audiofile = Depends(get_audiofile), 
     download_file_format: Literal['json', 'csv'] = Query('json', alias='download-file-format'),
-    csv_data: Literal['beats', 'segments'] = Query(None, alias='csv-data')
+    csv_data: Literal['beats', 'segments'] = Query(None, alias='csv-data'),
+    eighth_beat: bool = Query(False, alias='eighth-beat')
 ):
     structure_directory = audiofile.audiofile_directory / 'structure'
     try:
         structure = Structure.load_from_json_file(structure_directory / 'structure.json')
+        if eighth_beat:
+            structure = structure.convert_splited_beats_into_eighths()
     except FileNotFoundError:
         raise HTTPException(
             status_code=404,

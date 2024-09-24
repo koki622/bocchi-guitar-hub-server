@@ -1,7 +1,7 @@
 import json
 import os
 from pathlib import Path
-from typing import List
+from typing import List, TypeVar, Union
 from fastapi import HTTPException
 import numpy as np
 import pandas
@@ -121,11 +121,13 @@ class Segment(BaseModel):
     end: float
     label: str
 
+TStructure = TypeVar('T', bound='Structure')
+
 class Structure(JsonLoadableBase):
     bpm: int
     beats: List[float]
     downbeats: List[float]
-    beat_positions: List[int]
+    beat_positions: List[Union[int, float]]
     segments: List[Segment]
 
     def calculate_bpm(self) -> float:
@@ -133,3 +135,24 @@ class Structure(JsonLoadableBase):
         bpm = 60 / avg_beat_duration
 
         return bpm
+    
+    def convert_splited_beats_into_eighths(self: TStructure) -> TStructure:
+        eighth_beats = []
+        eighth_beat_positions = []
+        beats = self.beats
+        beat_positions = self.beat_positions
+        for i in range(len(beats) - 1):
+            beat_start = beats[i]
+            beat_end = beats[i + 1]
+            # 4分音符の開始ビート
+            eighth_beats.append(beat_start)
+            eighth_beat_positions.append(beat_positions[i])
+            # その4分音符の中点を追加（8分音符に相当）
+            eighth_beats.append(round(beat_start + (beat_end - beat_start) / 2, 2))
+            eighth_beat_positions.append(beat_positions[i] + 0.5)
+    
+        # 最後の4分音符のビートも追加
+        eighth_beats.append(beats[-1])
+        eighth_beat_positions.append(beat_positions[-1])
+    
+        return Structure(bpm=self.bpm, beats=eighth_beats, downbeats=self.downbeats, beat_positions=eighth_beat_positions, segments=self.segments)
