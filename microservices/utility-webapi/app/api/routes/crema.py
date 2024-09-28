@@ -9,6 +9,7 @@ from app.api.deps import get_asyncio_redis_conn, get_audiofile, get_chords, get_
 from app.core.heavy_job import HeavyJob
 from app.models import Audiofile, ChordList
 from app.core.config import settings
+from app.services.adjust_chord import adjust_chord_time
 from app.services.midi_generator import convert_chords_to_midi
 
 router = APIRouter()
@@ -68,6 +69,7 @@ def response_chord(
         structure = get_structure(audiofile, eighth_beat)
 
         if apply_adjust_chord:
+            chords = adjust_chord_time(structure.beats, chords)
             chords.save_as_json_file(chord_directory / f'{file_stem}.json')
 
         if download_file_format == 'mid':
