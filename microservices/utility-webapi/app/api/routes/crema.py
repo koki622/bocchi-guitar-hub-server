@@ -5,11 +5,10 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import FileResponse
 from sse_starlette import EventSourceResponse
 import redis.asyncio
-from app.api.deps import get_asyncio_redis_conn, get_audiofile
+from app.api.deps import get_asyncio_redis_conn, get_audiofile, get_chords_or_adjusted, get_structure
 from app.core.heavy_job import HeavyJob
-from app.models import Audiofile, ChordList, CsvConvertibleBase, Structure
+from app.models import Audiofile, ChordList, Structure
 from app.core.config import settings
-from app.services.adjust_chord import adjust_chord_time
 from app.services.midi_generator import convert_chords_to_midi
 
 router = APIRouter()
@@ -53,63 +52,31 @@ media_types = {
 
 @router.get('/chord/{audiofile_id}')
 def response_chord(
-    audiofile: Audiofile = Depends(get_audiofile),
-    apply_adjust_chord: bool = Query(True, alias='apply-adjust-chord'), 
+    apply_adjust_chord: bool = Query(True, alias='apply-adjust-chord'),
     eighth_beat: bool = Query(False, alias='eighth-beat'),
+    audiofile: Audiofile = Depends(get_audiofile),
+    structure: Structure = Depends(get_structure),
+    chords: ChordList = Depends(get_chords_or_adjusted),
     download_file_format: Literal['json', 'csv', 'mid'] = Query('json', alias='download-file-format')
 ):
-    chord_directory = audiofile.audiofile_directory / 'chord'
-
-    try:
-        chords = ChordList.load_from_json_file(chord_directory / 'chord.json')
-    except FileNotFoundError:
-        raise HTTPException(
-            status_code=404,
-            detail='コード進行の解析結果が見つかりませんでした。'
-        )
     
-    chord_model: CsvConvertibleBase = None
-    structure_model = None
-    file_stem = ''
-
+    chord_directory = audiofile.audiofile_directory / 'chord'
+    file_stem = 'adjusted_' if apply_adjust_chord else ''
+    file_stem += 'chord'
+    eighth_stem = 'eighth_beat_' if eighth_beat else ''
+    
     if apply_adjust_chord:
-        file_stem += 'adjusted_'
-        try:
-            structure = Structure.load_from_json_file(audiofile.audiofile_directory / 'structure' / 'structure.json')
-        except FileNotFoundError:
-            raise HTTPException(
-                status_code=400,
-                detail='コードのタイミングを調整するには、音楽構造の解析結果が必要です。'
-            )
-        if eighth_beat:
-            eighth_structure = structure.convert_splited_beats_into_eighths()
-            structure_model = eighth_structure
-            file_stem += 'eighth_beat_chord'
-        else:
-            structure_model = structure
-            file_stem += 'chord'
-        beats = structure_model.beats
-
-        # コードのタイミングを補正
-        adjusted_chords = adjust_chord_time(beats, chords)
-        adjusted_chords.save_as_json_file(chord_directory / f'{file_stem}.json')
-
-        chord_model = adjusted_chords
-    else:
-        chord_model = chords
-        file_stem += 'chord'
-
+        chords.save_as_json_file(chord_directory / f'{file_stem}.json')
+    
     if download_file_format == 'csv':
-        chord_model.to_csv(chord_directory / f'{file_stem}.csv')
+        chords.to_csv(chord_directory / f'{file_stem}.csv')
     
     if download_file_format == 'mid':
-        structure_model = Structure.load_from_json_file(audiofile.audiofile_directory / 'structure' / 'structure.json') if not structure else structure
-        
-        convert_chords_to_midi(chord_model.chords, structure.bpm, chord_directory / f'{file_stem}.mid')
+        convert_chords_to_midi(chords.chords, structure.bpm, chord_directory / f'{file_stem}.mid')
 
     return FileResponse(
                 path=chord_directory / f'{file_stem}.{download_file_format}',
                 media_type=media_types[download_file_format],
-                headers={"Content-Disposition": f'attachment; filename={audiofile.audiofile_id}_{file_stem}.{download_file_format}'}
+                headers={"Content-Disposition": f'attachment; filename={audiofile.audiofile_id}_{eighth_stem}_{file_stem}.{download_file_format}'}
             )
     
