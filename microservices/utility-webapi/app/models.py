@@ -96,6 +96,11 @@ class JsonLoadableBase(CsvConvertibleBase):
     
         return model
     
+    def save_as_json_file(self, save_path: Path):
+        json_data = self.model_dump_json()
+        with open(save_path, 'w') as f:
+            f.write(json_data)
+    
 class Chord(BaseModel):
     time: float
     duration: float
@@ -110,11 +115,6 @@ class ChordList(JsonLoadableBase):
 
 class AdjustedChordList(JsonLoadableBase):
     chords: List[AdjustedChord]
-
-    def save_as_json_file(self, save_path: Path):
-        json_data = self.model_dump_json()
-        with open(save_path, 'w') as f:
-            f.write(json_data)
 
 class Segment(BaseModel):
     start: float
