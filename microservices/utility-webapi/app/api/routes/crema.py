@@ -103,9 +103,9 @@ def response_chord(
         chord_model.to_csv(chord_directory / f'{file_stem}.csv')
     
     if download_file_format == 'mid':
-        structure_model = structure_model if structure_model else Structure.load_from_json_file(audiofile.audiofile_directory / 'structure' / 'structure.json')
-        bpm = structure_model.calculate_bpm()
-        convert_chords_to_midi(chord_model.chords, bpm, chord_directory / f'{file_stem}.mid')
+        structure_model = Structure.load_from_json_file(audiofile.audiofile_directory / 'structure' / 'structure.json') if not structure else structure
+        
+        convert_chords_to_midi(chord_model.chords, structure.bpm, chord_directory / f'{file_stem}.mid')
 
     return FileResponse(
                 path=chord_directory / f'{file_stem}.{download_file_format}',
