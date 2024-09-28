@@ -4,8 +4,6 @@ from app.models import Audiofile, ChordList, Consumer, ConsumerHeaders, Structur
 from fastapi import Depends, File, HTTPException, Header, Path as fastapi_path, Query, UploadFile
 from pathlib import Path
 
-from app.services.adjust_chord import adjust_chord_time
-
 def get_consumer_headers(consumer_id :str = Header(settings.ANONYMOUS_CONSUMER_NAME, alias=settings.HTTP_HEADER_CONSUMER_ID)) -> ConsumerHeaders:
     return ConsumerHeaders(consumer_id=consumer_id)
 
@@ -49,18 +47,6 @@ def get_structure(
             detail='音楽構造の解析結果が見つかりません。'
         )
     return structure.convert_splited_beats_into_eighths() if eighth_beat else structure
-
-def get_chords_or_adjusted(
-    structure: Structure = Depends(get_structure),
-    apply_adjust_chord: bool = Query(True, alias='apply-adjust-chord'),
-    chords: ChordList = Depends(get_chords)
-) -> ChordList:
-    if not apply_adjust_chord:
-        return chords
-    
-    beats = structure.beats
-    adjusted_chords = adjust_chord_time(beats, chords)
-    return adjusted_chords
 
 def get_asyncio_redis_conn() -> redis.asyncio.Redis:
     return redis.asyncio.Redis(

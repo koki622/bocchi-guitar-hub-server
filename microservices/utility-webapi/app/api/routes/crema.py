@@ -5,9 +5,9 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import FileResponse
 from sse_starlette import EventSourceResponse
 import redis.asyncio
-from app.api.deps import get_asyncio_redis_conn, get_audiofile, get_chords_or_adjusted, get_structure
+from app.api.deps import get_asyncio_redis_conn, get_audiofile, get_chords, get_structure
 from app.core.heavy_job import HeavyJob
-from app.models import Audiofile, ChordList, Structure
+from app.models import Audiofile, ChordList
 from app.core.config import settings
 from app.services.midi_generator import convert_chords_to_midi
 
@@ -55,8 +55,7 @@ def response_chord(
     apply_adjust_chord: bool = Query(True, alias='apply-adjust-chord'),
     eighth_beat: bool = Query(False, alias='eighth-beat'),
     audiofile: Audiofile = Depends(get_audiofile),
-    structure: Structure = Depends(get_structure),
-    chords: ChordList = Depends(get_chords_or_adjusted),
+    chords: ChordList = Depends(get_chords),
     download_file_format: Literal['json', 'csv', 'mid'] = Query('json', alias='download-file-format')
 ):
     
@@ -65,15 +64,18 @@ def response_chord(
     file_stem += 'chord'
     eighth_stem = 'eighth_beat_' if eighth_beat else ''
     
-    if apply_adjust_chord:
-        chords.save_as_json_file(chord_directory / f'{file_stem}.json')
+    if apply_adjust_chord or download_file_format == 'mid':
+        structure = get_structure(audiofile, eighth_beat)
+
+        if apply_adjust_chord:
+            chords.save_as_json_file(chord_directory / f'{file_stem}.json')
+
+        if download_file_format == 'mid':
+            convert_chords_to_midi(chords.chords, structure.bpm, chord_directory / f'{file_stem}.mid')
     
     if download_file_format == 'csv':
         chords.to_csv(chord_directory / f'{file_stem}.csv')
     
-    if download_file_format == 'mid':
-        convert_chords_to_midi(chords.chords, structure.bpm, chord_directory / f'{file_stem}.mid')
-
     return FileResponse(
                 path=chord_directory / f'{file_stem}.{download_file_format}',
                 media_type=media_types[download_file_format],
