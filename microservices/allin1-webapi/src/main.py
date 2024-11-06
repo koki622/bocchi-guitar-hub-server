@@ -3,8 +3,7 @@ import os
 from pathlib import Path
 from pydantic import BaseModel
 import torch
-from analyze import analyze
-from utility import analysis_result_to_json, analysis_result_to_sonic_visualizer
+from .utility import analysis_result_to_json
 from allin1.models.loaders import load_pretrained_model
 from allin1.spectrogram import extract_spectrograms
 from contextlib import asynccontextmanager
@@ -12,7 +11,6 @@ from fastapi import FastAPI
 from allin1.helpers import (
   run_inference
 )
-from distutils.dir_util import mkpath
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):

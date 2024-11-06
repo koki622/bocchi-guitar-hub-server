@@ -76,7 +76,7 @@ def delete_separated_audio(audiofile: Audiofile = Depends(get_audiofile)):
         )
     return('ok')
 
-@router.post('/separated-audio/{audiofile_id}/compression', description='処理結果を圧縮する。')
+@router.post('/separated-audio/compression/{audiofile_id}', description='処理結果を圧縮する。')
 def compression_separated_audio(request: Request, audiofile: Audiofile = Depends(get_audiofile), r_asyncio: redis.asyncio.Redis = Depends(get_asyncio_redis_conn)):
     separated_path = audiofile.audiofile_directory / 'separated'
     separated_zip_path = audiofile.audiofile_directory / 'separated.zip'

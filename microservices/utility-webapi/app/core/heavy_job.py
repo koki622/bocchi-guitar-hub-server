@@ -170,14 +170,13 @@ class HeavyJob:
                 break
             
     def generate_job_status_message(self, job_id: str, job_status: Literal['processing soon', 'queued', 'enqueue success', 'job success', 'job failed'], queue_position: int = None) -> dict:
-        return {
-            'event':'job status notification', 
-            'data':{
-                'job_id': job_id,
-                'job_status':job_status, 
-                'queue_position':queue_position
-            }
+        data = {
+            'job_id': job_id,
+            'job_status':job_status, 
+            'queue_position':queue_position
         }
+        
+        return f"{json.dumps(data)}\n\n"
     
     async def stream(
         self,
@@ -234,7 +233,7 @@ class HeavyJob:
             job_id = job_queue.id
             enqueued_at = job_queue.enqueued_at
             
-            yield json.dumps(self.generate_job_status_message(job_id, 'enqueue success'))
+            yield self.generate_job_status_message(job_id, 'enqueue success')
     
             queue_position = job_queue.get_position()
         
@@ -242,15 +241,15 @@ class HeavyJob:
 
             if queue_position is None:
                 # queue_positionが空の状態は、既に処理中であることを示す。
-                yield json.dumps(self.generate_job_status_message(job_id, 'processing soon'))
+                yield self.generate_job_status_message(job_id, 'processing soon')
 
             # queue_positionの初期値から現在のキューの位置を推定し、位置に変化がある度に通知する。
             async for queue_position in self.response_queue_status_from_stream(request, notify_stream_name, job_id, queue_position, enqueued_at):
                 if queue_position < 0:
                     # 0未満はキューを抜け出して、処理が始まることを示す。
-                    yield json.dumps(self.generate_job_status_message(job_id, 'processing soon'))
+                    yield self.generate_job_status_message(job_id, 'processing soon')
                 else:
-                    yield json.dumps(self.generate_job_status_message(job_id, 'queued', queue_position))
+                    yield self.generate_job_status_message(job_id, 'queued', queue_position)
 
             # すぐに結果が反映されないので、0.1秒待ってから結果を取得
             job_result = await get_job_result(job_queue, 0.1)
@@ -261,7 +260,7 @@ class HeavyJob:
                 job_result_status = 'job failed'
 
             # ジョブの成否を通知    
-            yield json.dumps(self.generate_job_status_message(job_id, job_result_status))
+            yield self.generate_job_status_message(job_id, job_result_status)
 
         except asyncio.CancelledError as e:
             print("クライアントからの接続が切れました")

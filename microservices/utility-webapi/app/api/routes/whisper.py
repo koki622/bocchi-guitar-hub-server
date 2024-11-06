@@ -35,7 +35,9 @@ def analyze_lyric(request: Request, audiofile: Audiofile = Depends(get_audiofile
             status_code=400,
             detail='音声の分離結果が見つかりませんでした。解析には音声の分離結果が必要です。'
         )
-    request_body = {'file_path': str(audiofile.audiofile_directory / 'separated' / 'vocals.wav')}
+    
+    file_path = str(audiofile.audiofile_directory / 'separated' / 'vocals.wav')
+    request_body = {'file_path': file_path}
     return EventSourceResponse(
         job_router.stream(
             request=request, 
