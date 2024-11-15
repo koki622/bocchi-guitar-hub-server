@@ -132,4 +132,31 @@ def response_structure(
         path=structure_directory / f'{stem}.{download_file_format}',
         headers={"Content-Disposition": f'attachment; filename={audiofile.audiofile_id}_{stem}.{download_file_format}'}
     )
+
+@router.get('/structure/click-sound/{audiofile_id}')
+def response_click_sound(
+    audiofile: Audiofile = Depends(get_audiofile), 
+    click_sound_type: Literal['normal', '2x', 'half'] = Query(default='normal', alias='click-sound-type')
+):
+    structure_directory = audiofile.audiofile_directory / 'structure'
+    click_sound_directory = None
+    if click_sound_type == 'normal':
+        click_sound_directory = structure_directory / 'clicks_normal.mp3'
+    elif click_sound_type == '2x':
+        click_sound_directory = structure_directory / 'clicks_2x.mp3'
+    elif click_sound_type == 'half':
+        click_sound_directory = structure_directory / 'clicks_half.mp3'
+
+    try:
+        return FileResponse(path=click_sound_directory, headers={"Content-Disposition": f'attachment; filename={click_sound_directory.stem}{click_sound_directory.suffix}'})
+    except FileNotFoundError:
+        raise HTTPException(
+            status_code=404,
+            detail='結果が見つかりませんでした。'
+        )
+    except:
+        raise HTTPException(
+            status_code=500,
+            detail='不明なエラー。'  
+        )
     

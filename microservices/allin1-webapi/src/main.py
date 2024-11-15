@@ -3,11 +3,12 @@ import os
 from pathlib import Path
 from pydantic import BaseModel
 import torch
-from .utility import analysis_result_to_json
+from .utility import analysis_result_to_json, generate_click_sound
 from allin1.models.loaders import load_pretrained_model
 from allin1.spectrogram import extract_spectrograms
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
+import demucs.separate
 from allin1.helpers import (
   run_inference
 )
@@ -61,9 +62,13 @@ def analyze_structure(body: StructureCreateBody):
             include_embeddings=False
         )
     save_dir = Path(file_path.parent / 'structure')
+
+
     save_dir.mkdir()
     analysis_result_to_json(result, save_dir)
-   
+    y = demucs.separate.load_track(file_path, 2, 44100).numpy()
+    length = y.shape[-1]
+    generate_click_sound(result, length, save_dir)
     end_time = datetime.now()
     duration = end_time - now
     print(f"end:{end_time}, duration:{duration}")
