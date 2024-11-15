@@ -3,7 +3,7 @@ import os
 from pathlib import Path
 from pydantic import BaseModel
 import torch
-from .utility import analysis_result_to_json, generate_click_sound
+from .utility import adjust_segments_to_beat, analysis_result_to_json, generate_click_sound
 from allin1.models.loaders import load_pretrained_model
 from allin1.spectrogram import extract_spectrograms
 from contextlib import asynccontextmanager
@@ -62,13 +62,19 @@ def analyze_structure(body: StructureCreateBody):
             include_embeddings=False
         )
     save_dir = Path(file_path.parent / 'structure')
-
-
     save_dir.mkdir()
+
+    # 曲のセクションのタイミングをビートに補正
+    result.segments = adjust_segments_to_beat(result.beats, result.segments)
+
+    # 結果をjsonとして保存
     analysis_result_to_json(result, save_dir)
+
     y = demucs.separate.load_track(file_path, 2, 44100).numpy()
     length = y.shape[-1]
+    # ビートの結果からクリック音を生成
     generate_click_sound(result, length, save_dir)
+    
     end_time = datetime.now()
     duration = end_time - now
     print(f"end:{end_time}, duration:{duration}")

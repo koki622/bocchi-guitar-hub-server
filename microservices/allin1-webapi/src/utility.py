@@ -1,10 +1,26 @@
 import json
 from pathlib import Path
-from allin1.typings import AnalysisResult
+from allin1.typings import AnalysisResult, Segment
 from pydub import AudioSegment
 import librosa
 import numpy as np
 import soundfile as sf
+
+def adjust_segments_to_beat(beats: list[int], segments: list[Segment]) -> Segment:
+    # ビートのリストをnumpy配列に変換
+    beats = np.array(beats)
+
+    # セグメントのstartとendを最寄りのビートに補正
+    for segment in segments:
+        if segment.label == 'start':
+            # "start"ラベルの場合、startは0に固定し、endは最寄りのビートに補正
+            segment.start = 0
+            segment.end = beats[np.abs(beats - segment.end).argmin()]
+        else:
+            # その他のラベルの場合、startとendを最寄りのビートに補正
+            segment.start = beats[np.abs(beats - segment.start).argmin()]
+            segment.end = beats[np.abs(beats - segment.end).argmin()]
+    return segments
 
 def analysis_result_to_json(result: AnalysisResult, save_dir: Path):
     data = {
