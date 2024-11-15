@@ -1,0 +1,20 @@
+FROM python:3.9
+
+ENV TZ=Asia/Tokyo
+ENV PATH /root/.local/bin:$PATH
+
+RUN mkdir app &&\
+ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
+
+WORKDIR /app
+
+RUN apt-get update &&\
+    apt install -y ffmpeg curl git &&\
+    curl -sSL https://install.python-poetry.org | python3 -
+
+COPY src ./src
+COPY pyproject.toml ./pyproject.toml
+
+RUN poetry config virtualenvs.create false &&\
+    poetry lock &&\
+    poetry install --no-root

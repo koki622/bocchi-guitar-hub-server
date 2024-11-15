@@ -1,3 +1,4 @@
+name: bocchi-guitar-hub-server-cpu
 x-kong-config:
   &kong-env
   KONG_DATABASE: postgres
@@ -92,63 +93,47 @@ services:
   faster-whisper-webapi:
     build:
       context: ./microservices/faster-whisper-webapi
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.cpu
     ports:
       - ${FASTER_WHISPER_WEBAPI_PORT}:8000
     environment:
       - CONSUMER_VOLUME_PATH=${CONSUMER_VOLUME_PATH}
     volumes:
-      - ./microservices/faster-whisper-webapi/:/app
+      - ./microservices/faster-whisper-webapi/src:/app/src
       - consumer_data:${CONSUMER_VOLUME_PATH}
     networks:
       - webapi-net
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - capabilities: [gpu]
     command: uvicorn src.main:app --host 0.0.0.0 --port 8000 --reload
 
   demucs-webapi:
     build: 
       context: ./microservices/demucs-webapi
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.cpu
     ports:
       - ${DEMUCS_WEBAPI_PORT}:8000
     environment:
       - CONSUMER_VOLUME_PATH=${CONSUMER_VOLUME_PATH}
     volumes:
-      - ./microservices/demucs-webapi/:/app
+      - ./microservices/demucs-webapi/src:/app/src
       - consumer_data:${CONSUMER_VOLUME_PATH}
     networks:
       - webapi-net
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - capabilities: [gpu]
     command: uvicorn src.main:app --host 0.0.0.0 --port 8000 --reload
   
 
   allin1-webapi:
-    image: sha256:6e6dabdf2c7117605ebbb61b87e57f70cc34c573c0f3f567d0f25c946a639221
-    #build:
-    #  context: ./microservices/allin1-webapi
-    #  dockerfile: Dockerfile
+    build:
+      context: ./microservices/allin1-webapi
+      dockerfile: Dockerfile.cpu
     ports:
       - ${ALLIN1_WEBAPI_PORT}:8000
     environment:
       - CONSUMER_VOLUME_PATH=${CONSUMER_VOLUME_PATH}
     volumes:
-      - ./microservices/allin1-webapi/:/app
+      - ./microservices/allin1-webapi/src:/app/src
       - consumer_data:${CONSUMER_VOLUME_PATH}
     networks:
       - webapi-net
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - capabilities: [gpu]
     command: uvicorn src.main:app --host 0.0.0.0 --port 8000 --reload
     #command: /bin/sh -c "while sleep 1000; do :; done"
 

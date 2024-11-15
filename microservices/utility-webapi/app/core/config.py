@@ -14,8 +14,8 @@ class WebAPISettings(BaseModel):
 
 class WebAPIJobSettings(WebAPISettings):
     queue: str
-    timeout: TimeoutType = 60 # ジョブが実行されてからのタイムアウト時間
-    read_timeout: TimeoutType = 60 # webapiと接続が確立されてからのタイムアウト時間
+    timeout: TimeoutType = 300 # ジョブが実行されてからのタイムアウト時間
+    read_timeout: TimeoutType = 300 # webapiと接続が確立されてからのタイムアウト時間
 
 class JobWorkerSettings(BaseModel):
     queue: str

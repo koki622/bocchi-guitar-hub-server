@@ -1,0 +1,29 @@
+[tool.poetry]
+name = "allin1-webapi"
+version = "0.1.0"
+description = ""
+authors = ["koki622 <koki08018907926@gmail.com>"]
+license = "MIT"
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = ">=3.9"
+fastapi = "0.111.0"
+uvicorn = "0.30.1"
+python-multipart = "^0.0.9"
+allin1 = "1.1.0"
+torch = { version = "=2.5.1+cpu", source = "pytorch-cpu" }
+torchvision = { version = "=0.20.1+cpu", source = "pytorch-cpu"}
+torchaudio = { version = "=2.5.1+cpu", source = "pytorch-cpu"}
+madmom = { git = "https://github.com/CPJKU/madmom.git"}
+natten = { url = "https://shi-labs.com/natten/wheels/cpu/torch2.5.0/natten-0.17.3%2Btorch250cpu-cp39-cp39-linux_x86_64.whl"}
+numpy = "1.23.0"
+
+[[tool.poetry.source]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+secondary = true
+
+[build-system]
+requires = ["poetry-core", "cython"]
+build-backend = "poetry.core.masonry.api"

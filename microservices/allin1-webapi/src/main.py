@@ -16,7 +16,7 @@ from allin1.helpers import (
 async def lifespan(app: FastAPI):
     global model
     print("modelロードします")
-    model = load_pretrained_model() # model_nameにharmonix-allを使用するとlemonの最初の部分のビートがうまく認識されなかった
+    model = load_pretrained_model(device='cuda' if torch.cuda.is_available() else 'cpu') # model_nameにharmonix-allを使用するとlemonの最初の部分のビートがうまく認識されなかった
     print("modelロード完了")
     yield
     print("shutdown")
@@ -56,7 +56,7 @@ def analyze_structure(body: StructureCreateBody):
             path=file_path,
             spec_path=spec_path,
             model=model,
-            device='cuda',
+            device='cuda' if torch.cuda.is_available() else 'cpu',
             include_activations=False,
             include_embeddings=False
         )
