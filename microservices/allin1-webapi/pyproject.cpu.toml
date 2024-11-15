@@ -18,6 +18,7 @@ torchaudio = { version = "=2.5.1+cpu", source = "pytorch-cpu"}
 madmom = { git = "https://github.com/CPJKU/madmom.git"}
 natten = { url = "https://shi-labs.com/natten/wheels/cpu/torch2.5.0/natten-0.17.3%2Btorch250cpu-cp39-cp39-linux_x86_64.whl"}
 numpy = "1.23.0"
+pydub = "^0.25.1"
 
 [[tool.poetry.source]]
 name = "pytorch-cpu"
