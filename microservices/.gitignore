@@ -3,3 +3,4 @@ whisper-webapi/
 .env
 docker-compose.yml
 **/__pycache__/**
+**/poetry.lock/**
