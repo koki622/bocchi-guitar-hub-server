@@ -1,6 +1,7 @@
 from datetime import datetime
 from pathlib import Path
-from fastapi import APIRouter, HTTPException, Request, Depends
+from typing import Literal
+from fastapi import APIRouter, HTTPException, Query, Request, Depends
 from fastapi.responses import FileResponse
 import redis.asyncio
 import os
@@ -12,8 +13,15 @@ from app.api.deps import get_asyncio_redis_conn, get_audiofile
 from app.core.heavy_job import HeavyJob
 from app.core.config import settings
 from app.models import Audiofile
+from app.services.audio_conversion import AudioConversionService
 
 router = APIRouter()
+
+MEDIA_TYPE = {
+    'mp3': 'audio/mpeg',
+    'wav': 'audio/wav',
+    'ogg': 'audio/ogg'
+}
 
 @router.post("/separated-audio/{audiofile_id}")
 def separate(request: Request, audiofile: Audiofile = Depends(get_audiofile), r_asyncio: redis.asyncio.Redis = Depends(get_asyncio_redis_conn)) -> EventSourceResponse:
@@ -45,6 +53,54 @@ def separate(request: Request, audiofile: Audiofile = Depends(get_audiofile), r_
         )
     )
 
+@router.get('/separated-audio/stem/{audiofile_id}')
+def response_stem_audio(
+    audiofile: Audiofile = Depends(get_audiofile),
+    stem: Literal['vocals', 'drums', 'bass', 'guitar', 'piano', 'other'] = Query(alias='stem'),
+    format: Literal['wav', 'mp3', 'ogg'] = Query(alias='format')
+):
+    separated_path = audiofile.audiofile_directory / 'separated'
+    if not os.path.exists(separated_path):
+        raise HTTPException(
+            status_code=400,
+            detail='音声の分離結果が存在しません。'
+        )
+    if stem == 'other':
+        stem = 'other_6s'
+
+    if format == 'wav':
+        response_directory = separated_path
+    else:
+        response_directory = audiofile.audiofile_directory / f'separated_{format}'
+        if not os.path.exists(response_directory / f'{stem}.{format}'):
+            # 保存ディレクトリが存在しない場合、変換処理を行う
+            if not os.path.exists(response_directory):
+                os.mkdir(response_directory)
+            
+            AudioConversionService.convert_audiofile_to_format([separated_path / f'{stem}.wav'], 'wav', response_directory, format)
+           
+            '''
+            input_files = [
+                separated_path / 'vocals.wav',
+                separated_path / 'drums.wav',
+                separated_path / 'bass.wav',
+                separated_path / 'guitar.wav',
+                separated_path / 'piano.wav',
+                separated_path / 'other_6s.wav',
+            ]
+            '''
+    try:
+        return FileResponse(
+            path=response_directory / f'{stem}.{format}',
+            media_type=MEDIA_TYPE[format],
+            headers={"Content-Disposition": f'attachment; filename={stem}.{format}'}
+        )
+    except FileNotFoundError:
+        raise HTTPException(
+            status_code=500,
+            detail='ファイルが見つかりませんでした。'
+        )
+    
 @router.get('/separated-audio/{audiofile_id}')
 def response_separated_audio(request: Request, audiofile: Audiofile = Depends(get_audiofile)):
     separated_zip_path = audiofile.audiofile_directory / 'separated.zip'
