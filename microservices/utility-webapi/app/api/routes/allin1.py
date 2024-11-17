@@ -1,5 +1,6 @@
 from datetime import datetime
 import json
+import mimetypes
 import os
 from typing import Literal
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
@@ -12,7 +13,15 @@ from app.models import Audiofile, Structure
 from app.core.config import settings
 from pydub import AudioSegment
 
+from app.services.audio_conversion import AudioConversionService
+
 router = APIRouter()
+
+MEDIA_TYPE = {
+    'mp3': 'audio/mpeg',
+    'wav': 'audio/wav',
+    'ogg': 'audio/ogg'
+}
 
 @router.post("/spectrograms/{audiofile_id}")
 def spectrograms(request: Request, audiofile: Audiofile = Depends(get_audiofile), r_asyncio: redis.asyncio.Redis = Depends(get_asyncio_redis_conn)) -> EventSourceResponse:
@@ -136,25 +145,38 @@ def response_structure(
 @router.get('/structure/click-sound/{audiofile_id}')
 def response_click_sound(
     audiofile: Audiofile = Depends(get_audiofile), 
-    click_sound_type: Literal['normal', '2x', 'half'] = Query(default='normal', alias='click-sound-type')
+    click_sound_type: Literal['normal', '2x', 'half'] = Query(default='normal', alias='click-sound-type'),
+    format: Literal['wav', 'mp3', 'ogg'] = Query(alias='format')
 ):
     structure_directory = audiofile.audiofile_directory / 'structure'
-    click_sound_directory = None
-    if click_sound_type == 'normal':
-        click_sound_directory = structure_directory / 'clicks_normal.mp3'
-    elif click_sound_type == '2x':
-        click_sound_directory = structure_directory / 'clicks_2x.mp3'
-    elif click_sound_type == 'half':
-        click_sound_directory = structure_directory / 'clicks_half.mp3'
+
+    # 初期はmp3ファイルしか存在しない
+    mp3_click_sound_path = structure_directory / f'clicks_{click_sound_type}.mp3'
+
+    if not os.path.exists(mp3_click_sound_path):
+        raise HTTPException(
+            status_code=404,
+            detail='結果が見つかりませんでした。'
+        )
+
+    # 実際にダウンロードされる拡張子のファイルパス
+    download_click_sound_path = mp3_click_sound_path.with_suffix(f'.{format}')
+    
+    if not format == 'mp3':
+        if not os.path.exists(download_click_sound_path):
+            AudioConversionService.convert_audiofile_to_format([mp3_click_sound_path], 'mp3', structure_directory, format)
 
     try:
-        return FileResponse(path=click_sound_directory, headers={"Content-Disposition": f'attachment; filename={click_sound_directory.stem}{click_sound_directory.suffix}'})
+        return FileResponse(
+            path=download_click_sound_path, 
+            media_type=MEDIA_TYPE[format],
+            headers={"Content-Disposition": f'attachment; filename={download_click_sound_path.stem}{download_click_sound_path.suffix}'})
     except FileNotFoundError:
         raise HTTPException(
             status_code=404,
             detail='結果が見つかりませんでした。'
         )
-    except:
+    except Exception:
         raise HTTPException(
             status_code=500,
             detail='不明なエラー。'  
