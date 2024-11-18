@@ -4,6 +4,7 @@ from contextlib import asynccontextmanager
 import demucs.api
 from datetime import datetime
 from pydantic import BaseModel
+from pydub import AudioSegment
 
 separator = None
 
@@ -36,5 +37,13 @@ def separate(body: FilePathBody):
     for stem, source in separated.items():
         if stem == 'other': stem = 'other_6s'
         demucs.api.save_audio(source, save_dir_path / f'{stem}.wav', separator.samplerate)
+    
+    # ピアノ、ギター、その他パートの音声を重ねてother.wavを生成する
+    combined = AudioSegment.from_wav(save_dir_path / 'other_6s.wav')
+    for file_name in ['piano.wav', 'guitar.wav']:
+            audio = AudioSegment.from_wav(save_dir_path / file_name)
+            # 音声を重ねる
+            combined = combined.overlay(audio)
 
+    combined.export(save_dir_path / 'other.wav', format='wav')
     return {"end":end_time}    

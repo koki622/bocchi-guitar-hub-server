@@ -14,6 +14,7 @@ class WebAPISettings(BaseModel):
 
 class WebAPIJobSettings(WebAPISettings):
     queue: str
+    job_name: str
     timeout: TimeoutType = 300 # ジョブが実行されてからのタイムアウト時間
     read_timeout: TimeoutType = 300 # webapiと接続が確立されてからのタイムアウト時間
 
@@ -40,6 +41,7 @@ class Settings(BaseSettings):
     # demucs-webapiのジョブキュー設定
     demucs_webapi_job: WebAPIJobSettings = WebAPIJobSettings(
         **demucs_webapi.model_dump(),
+        job_name='demucs',
         queue='gpu_queue'
     )
 
@@ -50,6 +52,7 @@ class Settings(BaseSettings):
     # crema-webapiのジョブキュー設定
     crema_webapi_job: WebAPIJobSettings = WebAPIJobSettings(
         **crema_webapi.model_dump(),
+        job_name='crema',
         queue='cpu_queue'
     )
 
@@ -60,6 +63,7 @@ class Settings(BaseSettings):
     # whisper-webapiのジョブキュー設定
     whisper_webapi_job: WebAPIJobSettings = WebAPIJobSettings(
         **whisper_webapi.model_dump(),
+        job_name='whisper',
         queue='gpu_queue'
     )
 
@@ -71,12 +75,14 @@ class Settings(BaseSettings):
     # allin1-webapiのスペクトログラム解析のジョブキュー設定
     allin1_webapi_job_spectrograms: WebAPIJobSettings = WebAPIJobSettings(
         **allin1_webapi.model_dump(),
+        job_name='allin1_spectrograms',
         queue='cpu_queue'
     )
 
     # allin1-webapiの構造解析のジョブキュー設定
     allin1_webapi_job_structure: WebAPIJobSettings = WebAPIJobSettings(
         **allin1_webapi.model_dump(), 
+        job_name='allin1_structure',
         queue='gpu_queue'
     )
 
@@ -87,6 +93,7 @@ class Settings(BaseSettings):
     # zip圧縮webapiのジョブキュー設定
     compression_webapi_job: WebAPIJobSettings = WebAPIJobSettings(
         **compression_webapi.model_dump(),
+        job_name='compression',
         queue='cpu_queue'
     )
 

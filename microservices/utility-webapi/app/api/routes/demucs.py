@@ -1,16 +1,14 @@
-from datetime import datetime
 from pathlib import Path
 from typing import Literal
 from fastapi import APIRouter, HTTPException, Query, Request, Depends
 from fastapi.responses import FileResponse
-import redis.asyncio
 import os
 import shutil
 import tempfile
 from pydub import AudioSegment
 from sse_starlette import EventSourceResponse
-from app.api.deps import get_asyncio_redis_conn, get_audiofile
-from app.core.heavy_job import HeavyJob
+from app.api.deps import get_heavy_job, get_audiofile
+from app.core.heavy_job import ApiJob, HeavyJob
 from app.core.config import settings
 from app.models import Audiofile
 from app.services.audio_conversion import AudioConversionService
@@ -24,33 +22,28 @@ MEDIA_TYPE = {
 }
 
 @router.post("/separated-audio/{audiofile_id}")
-def separate(request: Request, audiofile: Audiofile = Depends(get_audiofile), r_asyncio: redis.asyncio.Redis = Depends(get_asyncio_redis_conn)) -> EventSourceResponse:
-    job_router = HeavyJob(
-        redis_host=settings.REDIS_HOST, 
-        redis_port=settings.REDIS_PORT, 
-        redis_asyncio_conn=r_asyncio, 
-        dst_api_host=settings.demucs_webapi.host,
-        dst_api_port=settings.demucs_webapi.port,
-        dst_api_connect_timeout=settings.demucs_webapi.connect_timeout
-    )
-    now = datetime.now()
-    print(now)
-    
+def separate(request: Request, audiofile: Audiofile = Depends(get_audiofile), job_router: HeavyJob = Depends(get_heavy_job)) -> EventSourceResponse: 
     if os.path.exists(audiofile.audiofile_directory / 'separated'):
         raise HTTPException(
             status_code=400,
             detail='既に音声の分離がされています。'
         )
+    
     request_body = {'file_path': str(audiofile.audiofile_path)}
+    demucs_job = settings.demucs_webapi_job
+    api_job = ApiJob(
+        job_name=demucs_job.job_name,
+        dst_api_url=f'http://{demucs_job.host}:{demucs_job.port}',
+        queue_name=demucs_job.queue,
+        request_path='/',
+        job_timeout=demucs_job.timeout,
+        request_body=request_body,
+        request_read_timeout=demucs_job.read_timeout,
+    )
+
+    job = job_router.submit_jobs([api_job])[0]
     return EventSourceResponse(
-        job_router.stream(
-            request=request, 
-            queue_name=settings.demucs_webapi_job.queue,
-            job_timeout=settings.demucs_webapi_job.timeout,
-            request_path='/',
-            request_body=request_body,
-            request_read_timeout=settings.demucs_webapi_job.read_timeout
-        )
+        job_router.stream_job_status(request=request, job=job)
     )
 
 @router.get('/separated-audio/stem/{audiofile_id}')
@@ -133,7 +126,7 @@ def delete_separated_audio(audiofile: Audiofile = Depends(get_audiofile)):
     return('ok')
 
 @router.post('/separated-audio/compression/{audiofile_id}', description='処理結果を圧縮する。')
-def compression_separated_audio(request: Request, audiofile: Audiofile = Depends(get_audiofile), r_asyncio: redis.asyncio.Redis = Depends(get_asyncio_redis_conn)):
+def compression_separated_audio(request: Request, audiofile: Audiofile = Depends(get_audiofile), job_router: HeavyJob = Depends(get_heavy_job)):
     separated_path = audiofile.audiofile_directory / 'separated'
     separated_zip_path = audiofile.audiofile_directory / 'separated.zip'
     if os.path.exists(separated_zip_path):
@@ -142,24 +135,19 @@ def compression_separated_audio(request: Request, audiofile: Audiofile = Depends
             detail='既に圧縮が完了しています。'
         )
     elif os.path.exists(separated_path):
-        job_router = HeavyJob(
-        redis_host=settings.REDIS_HOST, 
-        redis_port=settings.REDIS_PORT, 
-        redis_asyncio_conn=r_asyncio, 
-        dst_api_host=settings.compression_webapi.host, 
-        dst_api_port=settings.compression_webapi.port,
-        dst_api_connect_timeout=settings.compression_webapi.connect_timeout
+        compression_job = settings.compression_webapi_job
+        api_job = ApiJob(
+            job_name=compression_job.job_name,
+            dst_api_url=f'http://{compression_job.host}:{compression_job.port}',
+            queue_name=compression_job.queue,
+            request_path=f'/demucs/separated-audio/{audiofile.audiofile_id}/zip',
+            job_timeout=compression_job.timeout,
+            request_headers={settings.HTTP_HEADER_CONSUMER_ID:audiofile.consumer_id},
+            request_read_timeout=compression_job.read_timeout,
         )
-    
+        job = job_router.submit_jobs([api_job])[0]
         return EventSourceResponse(
-            job_router.stream(
-                request=request, 
-                queue_name=settings.compression_webapi_job.queue,
-                job_timeout=settings.compression_webapi_job.timeout,
-                request_path=f'/demucs/separated-audio/{audiofile.audiofile_id}/zip',
-                request_headers={settings.HTTP_HEADER_CONSUMER_ID:audiofile.consumer_id},
-                request_read_timeout=settings.compression_webapi_job.read_timeout
-            )
+            job_router.stream_job_status(request=request, job=job)
         )
         
     else:

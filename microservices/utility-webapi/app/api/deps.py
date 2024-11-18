@@ -1,5 +1,6 @@
 import redis.asyncio
 from app.core.config import settings
+from app.core.heavy_job import HeavyJob
 from app.models import Audiofile, ChordList, Consumer, ConsumerHeaders, Structure
 from fastapi import Depends, File, HTTPException, Header, Path as fastapi_path, Query, UploadFile
 from pathlib import Path
@@ -57,4 +58,12 @@ def get_asyncio_redis_conn() -> redis.asyncio.Redis:
         socket_connect_timeout=5,
         retry_on_timeout=True,
         socket_keepalive=True
+    )
+
+def get_heavy_job() -> HeavyJob:
+    r_asyncio = get_asyncio_redis_conn()
+    return HeavyJob(
+        redis_host=settings.REDIS_HOST, 
+        redis_port=settings.REDIS_PORT, 
+        redis_asyncio_conn=r_asyncio, 
     )
