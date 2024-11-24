@@ -175,7 +175,7 @@ class HeavyJob:
             if is_finished: 
                 break
             
-    def _generate_job_status_message(self, job_name: str, job_id: str, job_status: Literal['processing soon', 'queued', 'enqueue success', 'job success', 'job failed'], queue_position: int = None) -> dict:
+    def _generate_job_status_message(self, job_name: str, job_id: str, job_status: Literal['processing soon', 'queued', 'enqueue success', 'job success', 'job failed', 'job completed'], queue_position: int = None) -> dict:
         data = {
             'job_name': job_name,
             'job_id': job_id,
@@ -239,6 +239,7 @@ class HeavyJob:
             enqueued_at = job.enqueued_at
             job_id = job.get_id()
             job_name = job.meta.get('job_name')
+            yield self._generate_job_status_message(job_name, job_id, 'enqueue success')
             notify_stream_name = _queue_name_to_stream_name(job.origin)
 
             queue_position = job.get_position()
@@ -268,6 +269,9 @@ class HeavyJob:
                 
                 # ジョブの成否を通知    
                 yield self._generate_job_status_message(job_name, job_id, job_result_status)
+                if job_result_status == 'job failed':
+                    break
+                
                 if next_job_id is None:
                     yield self._generate_job_status_message(job_name, job_id, 'job completed')
                     break

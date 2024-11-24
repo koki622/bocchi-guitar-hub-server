@@ -17,7 +17,7 @@ def getJobStatus(request: Request, job_id: str, job_router: HeavyJob = Depends(g
         job_router.stream_job_status(request=request, job=job)
     )
 
-@router.post('/process_audio/{audiofile_id}')
+@router.post('/process-audio/{audiofile_id}')
 def processAudio(request: Request, audiofile: Audiofile = Depends(get_audiofile), job_router: HeavyJob = Depends(get_heavy_job)) -> EventSourceResponse:
     # エラー条件とメッセージをリストで定義
     error_conditions = [
