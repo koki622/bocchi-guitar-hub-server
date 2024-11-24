@@ -65,8 +65,6 @@ services:
       - webapi-net
   redis:
       image: redis:7.2.5
-      ports:
-        - "${REDIS_PORT}:6379"
       environment:
         - REDIS_PORT=${REDIS_PORT}
       volumes:
@@ -78,8 +76,6 @@ services:
     build:
       context: ./microservices/utility-webapi
       dockerfile: Dockerfile
-    ports:
-      - ${UTILITY_WEBAPI_PORT}:8000
     environment:
       - CONSUMER_VOLUME_PATH=${CONSUMER_VOLUME_PATH}
     volumes:
@@ -93,8 +89,6 @@ services:
     build:
       context: ./microservices/faster-whisper-webapi
       dockerfile: Dockerfile
-    ports:
-      - ${FASTER_WHISPER_WEBAPI_PORT}:8000
     environment:
       - CONSUMER_VOLUME_PATH=${CONSUMER_VOLUME_PATH}
     volumes:
@@ -113,8 +107,6 @@ services:
     build: 
       context: ./microservices/demucs-webapi
       dockerfile: Dockerfile
-    ports:
-      - ${DEMUCS_WEBAPI_PORT}:8000
     environment:
       - CONSUMER_VOLUME_PATH=${CONSUMER_VOLUME_PATH}
     volumes:
@@ -135,8 +127,6 @@ services:
     #build:
     #  context: ./microservices/allin1-webapi
     #  dockerfile: Dockerfile
-    ports:
-      - ${ALLIN1_WEBAPI_PORT}:8000
     environment:
       - CONSUMER_VOLUME_PATH=${CONSUMER_VOLUME_PATH}
     volumes:
@@ -158,8 +148,6 @@ services:
     build:
       context: ./microservices/crema-webapi
       dockerfile: Dockerfile
-    ports:
-      - ${CREMA_WEBAPI_PORT}:8000
     environment:
       - CONSUMER_VOLUME_PATH=${CONSUMER_VOLUME_PATH}
     volumes:
