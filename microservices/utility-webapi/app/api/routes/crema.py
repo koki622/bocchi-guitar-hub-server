@@ -8,7 +8,7 @@ from app.core.heavy_job import ApiJob, HeavyJob
 from app.models import Audiofile, ChordList
 from app.core.config import settings
 from app.services.adjust_chord import adjust_chord_time
-from app.services.midi_generator import convert_chords_to_midi
+from app.services.midi_generator import convert_chords_to_midi, convert_midi_to_audio
 
 router = APIRouter()
 
@@ -40,7 +40,8 @@ def analyze_chord(request: Request, audiofile: Audiofile = Depends(get_audiofile
 media_types = {
     'json': 'application/json',
     'csv': 'text/csv',
-    'mid': 'audio/midi'
+    'mid': 'audio/midi',
+    'ogg': 'audio/ogg'
 }
 
 @router.get('/chord/{audiofile_id}')
@@ -49,7 +50,8 @@ def response_chord(
     eighth_beat: bool = Query(False, alias='eighth-beat'),
     audiofile: Audiofile = Depends(get_audiofile),
     chords: ChordList = Depends(get_chords),
-    download_file_format: Literal['json', 'csv', 'mid'] = Query('json', alias='download-file-format')
+    download_file_format: Literal['json', 'csv', 'mid', 'ogg'] = Query('json', alias='download-file-format'),
+    gm_program_no: int = Query(25, ge=0, le=127, description='General MIDIの音色番号', alias='gm-program-no')
 ):
     
     chord_directory = audiofile.audiofile_directory / 'chord'
@@ -57,15 +59,21 @@ def response_chord(
     file_stem += 'chord'
     eighth_stem = 'eighth_beat_' if eighth_beat else ''
     
-    if apply_adjust_chord or download_file_format == 'mid':
+    if apply_adjust_chord or download_file_format == 'mid' or 'ogg':
         structure = get_structure(audiofile, eighth_beat)
 
         if apply_adjust_chord:
             chords = adjust_chord_time(structure.beats, chords)
             chords.save_as_json_file(chord_directory / f'{file_stem}.json')
 
-        if download_file_format == 'mid':
-            convert_chords_to_midi(chords.chords, structure.bpm, chord_directory / f'{file_stem}.mid')
+        if download_file_format == 'mid' or 'ogg':
+            midi_save_path = chord_directory / f'{file_stem}.mid'
+            convert_chords_to_midi(chords.chords, structure.bpm, gm_program_no, midi_save_path)
+
+            if download_file_format == 'ogg':
+                # ダウンロードファイル形式がoggならmidiを音声ファイルに変換
+                audio_save_path = chord_directory / f'{file_stem}.ogg'
+                convert_midi_to_audio(midi_save_path, audio_save_path)
     
     if download_file_format == 'csv':
         chords.to_csv(chord_directory / f'{file_stem}.csv')

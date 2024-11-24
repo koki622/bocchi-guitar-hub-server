@@ -14,7 +14,7 @@ WORKDIR /app
 COPY . .
 
 RUN apt-get update &&\
-    apt-get -y install locales ffmpeg &&\
+    apt-get -y install locales ffmpeg fluidsynth &&\
     localedef -f UTF-8 -i ja_JP ja_JP.UTF-8
 
 RUN pip install poetry &&\
