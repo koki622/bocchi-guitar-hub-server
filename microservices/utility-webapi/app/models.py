@@ -109,7 +109,6 @@ class Chord(BaseModel):
 class AdjustedChord(Chord):
     was_adjusted: bool
 
-    
 class ChordList(JsonLoadableBase):
     chords: List[Chord]
 

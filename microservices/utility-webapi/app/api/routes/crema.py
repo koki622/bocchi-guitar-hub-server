@@ -5,10 +5,11 @@ from fastapi.responses import FileResponse
 from sse_starlette import EventSourceResponse
 from app.api.deps import get_audiofile, get_chords, get_heavy_job, get_structure
 from app.core.heavy_job import ApiJob, HeavyJob
-from app.models import Audiofile, ChordList
+from app.models import Audiofile, ChordList, AdjustedChordList
 from app.core.config import settings
 from app.services.adjust_chord import adjust_chord_time
-from app.services.midi_generator import convert_chords_to_midi, convert_midi_to_audio
+from app.services.chord_db import GuitarData
+from app.services.midi_generator import convert_chords_to_midi, convert_midi_to_audio, match_audio_length
 
 router = APIRouter()
 
@@ -66,7 +67,7 @@ def response_chord(
             chords = adjust_chord_time(structure.beats, chords)
             chords.save_as_json_file(chord_directory / f'{file_stem}.json')
 
-        if download_file_format == 'mid' or 'ogg':
+        if download_file_format in ('mid', 'ogg'):
             midi_save_path = chord_directory / f'{file_stem}.mid'
             convert_chords_to_midi(chords.chords, structure.bpm, gm_program_no, midi_save_path)
 
@@ -74,10 +75,30 @@ def response_chord(
                 # ダウンロードファイル形式がoggならmidiを音声ファイルに変換
                 audio_save_path = chord_directory / f'{file_stem}.ogg'
                 convert_midi_to_audio(midi_save_path, audio_save_path)
+                # 出力した音声をもとの楽曲の長さに合わせる
+                match_audio_length(audio_save_path, audiofile.audiofile_path, audio_save_path)
     
     if download_file_format == 'csv':
         chords.to_csv(chord_directory / f'{file_stem}.csv')
     
+    if download_file_format in ('csv', 'json'):
+        # コードDB形式に変換
+        guitar_data = GuitarData()
+        converted_chord_list = []
+        converted_chord_model = None
+        file_stem += '_converted_db_type'
+        for chord in chords.chords:
+            chord.value = guitar_data.convert_shorthand_to_chords_json_format(chord.value)
+            converted_chord_list.append(chord)
+        if apply_adjust_chord:
+            converted_chord_model = AdjustedChordList(chords=converted_chord_list)
+        else:
+            converted_chord_model = ChordList(chords=converted_chord_list)
+        if download_file_format == 'csv':
+            converted_chord_model.to_csv(chord_directory / f'{file_stem}.csv')
+        else:
+            converted_chord_model.save_as_json_file(chord_directory / f'{file_stem}.json')
+        
     return FileResponse(
                 path=chord_directory / f'{file_stem}.{download_file_format}',
                 media_type=media_types[download_file_format],

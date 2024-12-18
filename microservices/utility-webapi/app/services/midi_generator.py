@@ -1,205 +1,17 @@
-import json
-import os
 from pathlib import Path
-from typing import Dict, List
+from typing import List
 import mido
 from mido import Message, MetaMessage, MidiFile, MidiTrack, second2tick
-from pychord import Chord as pychord
 from app.models import Chord
+from app.services.chord_db import GuitarData
 from midi2audio import FluidSynth
+from pydub import AudioSegment
 import subprocess
-
 
 TICKS_PER_BEAT = 480
 
-GUITAR_CHORD_DB_JSON_PATH = Path(os.path.dirname(__file__), '..', 'assets', 'guitar.json')
-
-SHORTHAND_TO_SUFFIX_MAP = {
-    "maj": "major",
-    "min": "minor",
-    "dim": "dim",
-    "dim7": "dim7",
-    "aug": "aug",
-    "7": "7",
-    "hdim7": "m7b5",  
-    "min7": "m7",
-    "maj7": "maj7",
-    "minmaj7": "mmaj7",
-    "maj6": "6",
-    "min6": "m6",
-    "9": "9",
-    "maj9": "maj9",
-    "min9": "m9",
-    "sus4": "sus4",
-    "sus2": "sus2",
-}
-
-SHORTHAND_TO_PYCHORD_SUFFIX_MAP = {
-    "maj": "maj",
-    "min": "min",
-    "dim": "dim",
-    "dim7": "dim7",
-    "aug": "aug",
-    "7": "7",
-    "hdim7": "m7b5",  
-    "min7": "m7",
-    "maj7": "maj7",
-    "minmaj7": "mmaj7",
-    "maj6": "6",
-    "min6": "m6",
-    "9": "9",
-    "maj9": "maj9",
-    "min9": "m9",
-    "sus4": "sus4",
-    "sus2": "sus2",
-}
-
-REVERSAL_SUFFIX_MAP = {
-    "maj": '',
-    "min": 'm',
-    "dim": "dim",
-    "dim7": "dim7",
-    "aug": "aug",
-    "7": "7",
-    "hdim7": "m7b5",  
-    "min7": "m7",
-    "maj7": "maj7",
-    "minmaj7": "mmaj7",
-    "maj6": "6",
-    "min6": "m6",
-    "9": "9",
-    "maj9": "maj9",
-    "min9": "m9",
-    "sus4": "sus4",
-    "sus2": "sus2",
-}
-
-CHORD_REVERSALS_MAP = {
-    "maj": {
-        3: 1,   # 第一転回形: 3番目の音が最も低い
-        5: 2,   # 第二転回形: 5番目の音が最も低い
-    },
-    "min": {
-        3: 1,   # 第一転回形: 3番目の音が最も低い
-        5: 2,   # 第二転回形: 5番目の音が最も低い
-    },
-    "dim": {
-        3: 1,   # 第一転回形: 3番目の音が最も低い
-        5: 2,   # 第二転回形: 5番目の音が最も低い
-    },
-    "dim7": {
-        3: 1,   # 第一転回形: 3番目の音が最も低い
-        5: 2,   # 第二転回形: 5番目の音が最も低い
-        7: 3,   # 第三転回形: 7番目の音が最も低い
-    },
-    "aug": {
-        3: 1,   # 第一転回形: 3番目の音が最も低い
-        5: 2,   # 第二転回形: 5番目の音が最も低い
-    },
-    "7": {
-        3: 1,   # 第一転回形: 3番目の音が最も低い
-        5: 2,   # 第二転回形: 5番目の音が最も低い
-        7: 3,   # 第三転回形: 7番目の音が最も低い
-    },
-    "hdim7": {
-        3: 1,   # 第一転回形: 3番目の音が最も低い
-        5: 2,   # 第二転回形: 5番目の音が最も低い
-        7: 3,   # 第三転回形: 7番目の音が最も低い
-    },
-    "min7": {
-        3: 1,   # 第一転回形: 3番目の音が最も低い
-        5: 2,   # 第二転回形: 5番目の音が最も低い
-        7: 3,   # 第三転回形: 7番目の音が最も低い
-    },
-    "maj7": {
-        3: 1,   # 第一転回形: 3番目の音が最も低い
-        5: 2,   # 第二転回形: 5番目の音が最も低い
-        7: 3,   # 第三転回形: 7番目の音が最も低い
-    },
-    "minmaj7": {
-        3: 1,   # 第一転回形: 3番目の音が最も低い
-        5: 2,   # 第二転回形: 5番目の音が最も低い
-        7: 3,   # 第三転回形: 7番目の音が最も低い
-    },
-    "maj6": {
-        3: 1,   # 第一転回形: 3番目の音が最も低い
-        5: 2,   # 第二転回形: 5番目の音が最も低い
-        6: 3,   # 第三転回形: 6番目の音が最も低い
-    },
-    "min6": {
-        3: 1,   # 第一転回形: 3番目の音が最も低い
-        5: 2,   # 第二転回形: 5番目の音が最も低い
-        6: 3,   # 第三転回形: 6番目の音が最も低い
-    },
-    "9": {
-        3: 1,   # 第一転回形: 3番目の音が最も低い
-        5: 2,   # 第二転回形: 5番目の音が最も低い
-        7: 3,   # 第三転回形: 7番目の音が最も低い
-        9: 4,   # 第四転回形: 9番目の音が最も低い
-    },
-    "maj9": {
-        3: 1,   # 第一転回形: 3番目の音が最も低い
-        5: 2,   # 第二転回形: 5番目の音が最も低い
-        7: 3,   # 第三転回形: 7番目の音が最も低い
-        9: 4,   # 第四転回形: 9番目の音が最も低い
-    },
-    "min9": {
-        3: 1,   # 第一転回形: 3番目の音が最も低い
-        5: 2,   # 第二転回形: 5番目の音が最も低い
-        7: 3,   # 第三転回形: 7番目の音が最も低い
-        9: 4,   # 第四転回形: 9番目の音が最も低い
-    },
-    "sus4": {
-        4: 1,   # 第一転回形: 4番目の音が最も低い
-        5: 2,   # 第二転回形: 5番目の音が最も低い
-    },
-    "sus2": {
-        2: 1,   # 第一転回形: 2番目の音が最も低い
-        5: 2,   # 第二転回形: 5番目の音が最も低い
-    }
-}
-
-
-class GuitarData:
-    def __init__(self, json_file_path: str):
-        # JSONファイルを開いてロード
-        with open(json_file_path, "r", encoding="utf-8") as file:
-            raw_data = json.load(file)
-
-        # 必要なデータだけ抽出
-        self.chords: Dict[str, Dict[str, List[int]]] = {
-            key: {
-                chord["suffix"]: chord["positions"][0]["midi"]  # 最初のポジションのMIDIのみ取得
-                for chord in chord_list
-            }
-            for key, chord_list in raw_data["chords"].items()
-        }
-
-    def get_midi(self, key: str, suffix: str) -> List[int]:
-        """
-        指定された key と suffix から対応する MIDI を取得
-        """
-        if "/" in suffix:
-            base_suffix, root_interval = suffix.split('/') # maj/3だったら maj, 3
-
-            # pychordが認識できるsuffixに変換
-            pychord_base_suffix = SHORTHAND_TO_PYCHORD_SUFFIX_MAP[base_suffix]
-
-            # 第n転回形形式に変換
-            reversal = CHORD_REVERSALS_MAP[base_suffix][int(root_interval)]
-            c = pychord(key + pychord_base_suffix + '/' + str(reversal))
-
-            # ルート音
-            root_note = c.components()[0]
-
-            # suffixを上書き
-            suffix = REVERSAL_SUFFIX_MAP[base_suffix] + '/' + root_note
-        else:
-            suffix = SHORTHAND_TO_SUFFIX_MAP[suffix]
-        return self.chords.get(key, {}).get(suffix, [60])
-
 def convert_chords_to_midi(chords: List[Chord], bpm: float, program: int, save_path: Path):
-    guitar_data = GuitarData(GUITAR_CHORD_DB_JSON_PATH)
+    guitar_data = GuitarData()
     mid = MidiFile()
     track = MidiTrack()
     mid.tracks.append(track)
@@ -221,15 +33,22 @@ def convert_chords_to_midi(chords: List[Chord], bpm: float, program: int, save_p
         elif i == 0:
             start_tick = second2tick(chord.time, TICKS_PER_BEAT, mido.bpm2tempo(bpm))
         elif previous_no_chord:
-            start_tick = second2tick(chords[i - 1].duration, TICKS_PER_BEAT, mido.bpm2tempo(bpm))
+            if i - 1 == 0:
+                # 前回のコードが先頭
+                start_tick = second2tick(chords[0].time + chords[i - 1].duration, TICKS_PER_BEAT, mido.bpm2tempo(bpm))
+            else:
+                start_tick = second2tick(chords[i - 1].duration, TICKS_PER_BEAT, mido.bpm2tempo(bpm))
         else:
             start_tick = 0
 
         previous_no_chord = False
         duration_tick = second2tick(chord.duration, TICKS_PER_BEAT, mido.bpm2tempo(bpm))
-        key_suffix = chord.value.split(':')
-        notes = guitar_data.get_midi(key_suffix[0], key_suffix[1])
-
+        # 範囲外のコード(X)の場合
+        if chord.value == 'X':
+            notes = [60]
+        else :
+            notes = guitar_data.get_midi_notes(chord.value)
+        print(f'notes:{notes}, start_tick:{start_tick}, duration_tick:{duration_tick}')
         # コードを鳴らす
         for i, note in enumerate(notes):
             if i == 0:
@@ -279,6 +98,29 @@ class CustomFluidSynth(FluidSynth):
             ['fluidsynth', '-i', '-g', str(self.gain), self.sound_font, midi_file, '-r', str(self.sample_rate)]
         )
 
+def match_audio_length(source_audio_path, target_audio_path, output_path):
+    # 音声ファイルを読み込む
+    source_audio = AudioSegment.from_file(source_audio_path)
+    target_audio = AudioSegment.from_file(target_audio_path)
+    
+    # 音声の長さを取得（ミリ秒単位）
+    source_length = len(source_audio)
+    target_length = len(target_audio)
+    
+    # 目標の長さに合わせるため、無音を追加
+    if source_length < target_length:
+        # 足りない時間を無音で補う
+        silence_duration = target_length - source_length
+        silence = AudioSegment.silent(duration=silence_duration)
+        # 無音を後ろに追加
+        adjusted_audio = source_audio + silence
+    else:
+        # 長さが長い場合はカット
+        adjusted_audio = source_audio[:target_length]
+    
+    # 出力ファイルに保存
+    adjusted_audio.export(output_path, format="ogg")
+   
 def convert_midi_to_audio(midi_file_path: Path, save_path: Path):
     fs = CustomFluidSynth(sound_font='/usr/share/sounds/sf2/FluidR3_GM.sf2', sample_rate=44100, gain=1)
     fs.midi_to_audio(midi_file_path, save_path)
