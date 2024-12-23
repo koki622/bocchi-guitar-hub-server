@@ -37,7 +37,7 @@ def separate(request: Request, audiofile: Audiofile = Depends(get_audiofile), jo
         request_path='/',
         job_timeout=settings.DEMUCS_JOB_TIMEOUT,
         request_body=request_body,
-        request_read_timeout=settings.DEMUCS_JOB_READ_TIMEOUT,
+        request_read_timeout=settings.DEMUCS_JOB_TIMEOUT,
     )
 
     job = job_router.submit_jobs([api_job])[0]
@@ -141,7 +141,7 @@ def compression_separated_audio(request: Request, audiofile: Audiofile = Depends
             request_path=f'/demucs/separated-audio/{audiofile.audiofile_id}/zip',
             job_timeout=settings.COMPRESSION_JOB_TIMEOUT,
             request_headers={settings.HTTP_HEADER_CONSUMER_ID:audiofile.consumer_id},
-            request_read_timeout=settings.COMPRESSION_JOB_READ_TIMEOUT,
+            request_read_timeout=settings.COMPRESSION_JOB_TIMEOUT,
         )
         job = job_router.submit_jobs([api_job])[0]
         return EventSourceResponse(

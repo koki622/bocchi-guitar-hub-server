@@ -42,7 +42,7 @@ def spectrograms(request: Request, audiofile: Audiofile = Depends(get_audiofile)
         request_path='/spectrograms',
         job_timeout=settings.ALLIN1_SPECTROGRAMS_JOB_TIMEOUT,
         request_body=request_body,
-        request_read_timeout=settings.ALLIN1_SPECTROGRAMS_JOB_READ_TIMEOUT,
+        request_read_timeout=settings.ALLIN1_SPECTROGRAMS_JOB_TIMEOUT,
     )
 
     job = job_router.submit_jobs([api_job])[0]
@@ -70,7 +70,7 @@ def analyze_structure(request: Request, audiofile: Audiofile = Depends(get_audio
         request_path='/structure',
         job_timeout=settings.ALLIN1_STRUCTURE_JOB_TIMEOUT,
         request_body=request_body,
-        request_read_timeout=settings.ALLIN1_STRUCTURE_JOB_READ_TIMEOUT,
+        request_read_timeout=settings.ALLIN1_STRUCTURE_JOB_TIMEOUT,
     )
 
     job = job_router.submit_jobs([api_job])[0]

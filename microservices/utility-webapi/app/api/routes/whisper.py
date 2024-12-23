@@ -31,7 +31,7 @@ def analyze_lyric(request: Request, audiofile: Audiofile = Depends(get_audiofile
         request_path='/',
         job_timeout=settings.WHISPER_JOB_TIMEOUT,
         request_body=request_body,
-        request_read_timeout=settings.WHISPER_JOB_READ_TIMEOUT,
+        request_read_timeout=settings.WHISPER_JOB_TIMEOUT,
     )
 
     job = job_router.submit_jobs([api_job])[0]

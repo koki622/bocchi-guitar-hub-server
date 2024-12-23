@@ -41,7 +41,7 @@ def processAudio(request: Request, audiofile: Audiofile = Depends(get_audiofile)
             request_path='/',
             job_timeout=settings.CREMA_JOB_TIMEOUT,
             request_body={'file_path': str(audiofile.audiofile_path)},
-            request_read_timeout=settings.CREMA_JOB_READ_TIMEOUT,
+            request_read_timeout=settings.CREMA_JOB_TIMEOUT,
         ),
         ApiJob(
             job_name=settings.DEMUCS_JOB_NAME,
@@ -50,7 +50,7 @@ def processAudio(request: Request, audiofile: Audiofile = Depends(get_audiofile)
             request_path='/',
             job_timeout=settings.DEMUCS_JOB_TIMEOUT,
             request_body={'file_path': str(audiofile.audiofile_path)},
-            request_read_timeout=settings.DEMUCS_JOB_READ_TIMEOUT,
+            request_read_timeout=settings.DEMUCS_JOB_TIMEOUT,
         ),
         ApiJob(
             job_name=settings.ALLIN1_SPECTROGRAMS_JOB_NAME,
@@ -59,7 +59,7 @@ def processAudio(request: Request, audiofile: Audiofile = Depends(get_audiofile)
             request_path='/spectrograms',
             job_timeout=settings.ALLIN1_SPECTROGRAMS_JOB_TIMEOUT,
             request_body={'separated_path':str(audiofile.audiofile_directory / 'separated')},
-            request_read_timeout=settings.ALLIN1_SPECTROGRAMS_JOB_READ_TIMEOUT,
+            request_read_timeout=settings.ALLIN1_SPECTROGRAMS_JOB_TIMEOUT,
         ),
         ApiJob(
             job_name=settings.ALLIN1_STRUCTURE_JOB_NAME,
@@ -68,7 +68,7 @@ def processAudio(request: Request, audiofile: Audiofile = Depends(get_audiofile)
             request_path='/structure',
             job_timeout=settings.ALLIN1_STRUCTURE_JOB_TIMEOUT,
             request_body={"file_path":str(audiofile.audiofile_path), 'spectrograms_path':str(audiofile.audiofile_directory / 'spectrograms.npy')},
-            request_read_timeout=settings.ALLIN1_STRUCTURE_JOB_READ_TIMEOUT,
+            request_read_timeout=settings.ALLIN1_STRUCTURE_JOB_TIMEOUT,
         ),
         ApiJob(
             job_name=settings.WHISPER_JOB_NAME,
@@ -77,7 +77,7 @@ def processAudio(request: Request, audiofile: Audiofile = Depends(get_audiofile)
             request_path='/',
             job_timeout=settings.WHISPER_JOB_TIMEOUT,
             request_body={'file_path': str(audiofile.audiofile_directory / 'separated' / 'vocals.wav')},
-            request_read_timeout=settings.WHISPER_JOB_READ_TIMEOUT,
+            request_read_timeout=settings.WHISPER_JOB_TIMEOUT,
         )
     ]
     jobs = job_router.submit_jobs(api_jobs)
