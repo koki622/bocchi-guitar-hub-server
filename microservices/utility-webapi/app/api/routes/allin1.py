@@ -35,15 +35,14 @@ def spectrograms(request: Request, audiofile: Audiofile = Depends(get_audiofile)
         )
     
     request_body = {'separated_path':str(separated_path)}
-    allin1_spectrograms_job = settings.allin1_webapi_job_spectrograms
     api_job = ApiJob(
-        job_name=allin1_spectrograms_job.job_name,
-        dst_api_url=f'http://{allin1_spectrograms_job.host}:{allin1_spectrograms_job.port}',
-        queue_name=allin1_spectrograms_job.queue,
+        job_name=settings.ALLIN1_SPECTROGRAMS_JOB_NAME,
+        dst_api_url=f'http://{settings.ALLIN1_HOST}:{8000}',
+        queue_name=settings.ALLIN1_SPECTROGRAMS_JOB_QUEUE,
         request_path='/spectrograms',
-        job_timeout=allin1_spectrograms_job.timeout,
+        job_timeout=settings.ALLIN1_SPECTROGRAMS_JOB_TIMEOUT,
         request_body=request_body,
-        request_read_timeout=allin1_spectrograms_job.read_timeout,
+        request_read_timeout=settings.ALLIN1_SPECTROGRAMS_JOB_READ_TIMEOUT,
     )
 
     job = job_router.submit_jobs([api_job])[0]
@@ -64,15 +63,14 @@ def analyze_structure(request: Request, audiofile: Audiofile = Depends(get_audio
             detail='スペクトログラムが見つかりませんでした。解析にはスペクトログラムが必要です。'
         )
     request_body = {"file_path":str(audiofile.audiofile_path), 'spectrograms_path':str(audiofile.audiofile_directory / 'spectrograms.npy')}
-    allin1_structure_job = settings.allin1_webapi_job_structure
     api_job = ApiJob(
-        job_name=allin1_structure_job.job_name,
-        dst_api_url=f'http://{allin1_structure_job.host}:{allin1_structure_job.port}',
-        queue_name=allin1_structure_job.queue,
+        job_name=settings.ALLIN1_STRUCTURE_JOB_NAME,
+        dst_api_url=f'http://{settings.ALLIN1_HOST}:{8000}',
+        queue_name=settings.ALLIN1_STRUCTURE_JOB_QUEUE,
         request_path='/structure',
-        job_timeout=allin1_structure_job.timeout,
+        job_timeout=settings.ALLIN1_STRUCTURE_JOB_TIMEOUT,
         request_body=request_body,
-        request_read_timeout=allin1_structure_job.read_timeout,
+        request_read_timeout=settings.ALLIN1_STRUCTURE_JOB_READ_TIMEOUT,
     )
 
     job = job_router.submit_jobs([api_job])[0]

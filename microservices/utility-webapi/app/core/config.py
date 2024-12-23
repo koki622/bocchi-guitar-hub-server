@@ -1,31 +1,35 @@
-from pydantic import BaseModel, Field
+from enum import Enum
+from pydantic import BaseModel, Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing_extensions import Union
-from redis import Redis
 
 TimeoutType = Union[int, float] | None
 
-# WEB APIごとのジョブキュー設定用のクラス
-class WebAPISettings(BaseModel):
-    host: str
-    port: int = Field(default=8000, ge=1, le=65535)
-    connect_timeout: TimeoutType = 3
-    
+UPLOAD_FILE_CONTENT_TYPE = ['audio/mpeg', 'audio/wav']
 
-class WebAPIJobSettings(WebAPISettings):
-    queue: str
-    job_name: str
-    timeout: TimeoutType = 300 # ジョブが実行されてからのタイムアウト時間
-    read_timeout: TimeoutType = 300 # webapiと接続が確立されてからのタイムアウト時間
-
-class JobWorkerSettings(BaseModel):
-    queue: str
-    multiplicity: int # ワーカーの起動数
+class MachinePowerType(Enum):
+    LOW = 1
+    MEDIUM = 2
+    HIGH = 3
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         env_file=".env", env_ignore_empty=True, extra="ignore"
     )
+
+    MACHINE_POWER: MachinePowerType = MachinePowerType.HIGH
+
+    @field_validator("MACHINE_POWER", mode="before")
+    @classmethod
+    def validate_machine_power(cls, value):
+        if isinstance(value, str):
+            try:
+                return MachinePowerType[value.upper()]  # 文字列をEnumに変換
+            except KeyError:
+                raise ValueError(f"Invalid MACHINE_POWER value: {value}")
+        return value
+
+    GPU_MODE: bool = True
 
     ANONYMOUS_CONSUMER_NAME: str = 'anonymous'
     
@@ -35,79 +39,50 @@ class Settings(BaseSettings):
     REDIS_PORT: int = 6379
 
     # demucs-webapiの設定
-    demucs_webapi: WebAPISettings = WebAPISettings(
-        host='demucs-webapi'
-    )
-    # demucs-webapiのジョブキュー設定
-    demucs_webapi_job: WebAPIJobSettings = WebAPIJobSettings(
-        **demucs_webapi.model_dump(),
-        job_name='demucs',
-        queue='gpu_queue'
-    )
+    DEMUCS_HOST: str = 'demucs-webapi'
+    DEMUCS_JOB_NAME: str = 'demucs'
+    DEMUCS_JOB_QUEUE: str = 'gpu_queue'
+    DEMUCS_JOB_TIMEOUT: TimeoutType = 300 # ジョブが実行されてからのタイムアウト時間
+    DEMUCS_JOB_READ_TIMEOUT: TimeoutType = 300 # webapiと接続が確立されてからのタイムアウト時間
 
     # crema-webapiの設定
-    crema_webapi: WebAPISettings = WebAPISettings(
-        host='crema-webapi'
-    )
-    # crema-webapiのジョブキュー設定
-    crema_webapi_job: WebAPIJobSettings = WebAPIJobSettings(
-        **crema_webapi.model_dump(),
-        job_name='crema',
-        queue='cpu_queue'
-    )
+    CREMA_HOST: str = 'crema-webapi'
+    CREMA_JOB_NAME: str = 'crema'
+    CREMA_JOB_QUEUE: str = 'cpu_queue'
+    CREMA_JOB_TIMEOUT: TimeoutType = 30 # ジョブが実行されてからのタイムアウト時間
+    CREMA_JOB_READ_TIMEOUT: TimeoutType = 30 # webapiと接続が確立されてからのタイムアウト時間
 
     # whisper-webapiの設定
-    whisper_webapi: WebAPISettings = WebAPISettings(
-        host='faster-whisper-webapi'
-    )
-    # whisper-webapiのジョブキュー設定
-    whisper_webapi_job: WebAPIJobSettings = WebAPIJobSettings(
-        **whisper_webapi.model_dump(),
-        job_name='whisper',
-        queue='gpu_queue'
-    )
+    WHISPER_HOST: str = 'faster-whisper-webapi'
+    WHISPER_JOB_NAME: str = 'whisper'
+    WHISPER_JOB_QUEUE: str = 'gpu_queue'
+    WHISPER_JOB_TIMEOUT: TimeoutType = 300 # ジョブが実行されてからのタイムアウト時間
+    WHISPER_JOB_READ_TIMEOUT: TimeoutType = 300 # webapiと接続が確立されてからのタイムアウト時間
 
     # allin1-webapiの設定
-    allin1_webapi: WebAPISettings = WebAPISettings(
-        host='allin1-webapi'
-    )
+    ALLIN1_HOST: str = 'allin1-webapi'
+    ALLIN1_SPECTROGRAMS_JOB_NAME: str = 'allin1_spectrograms'
+    ALLIN1_SPECTROGRAMS_JOB_QUEUE: str = 'cpu_queue'
+    ALLIN1_SPECTROGRAMS_JOB_TIMEOUT: TimeoutType = 120 # ジョブが実行されてからのタイムアウト時間
+    ALLIN1_SPECTROGRAMS_JOB_READ_TIMEOUT: TimeoutType = 120 # webapiと接続が確立されてからのタイムアウト時間
 
-    # allin1-webapiのスペクトログラム解析のジョブキュー設定
-    allin1_webapi_job_spectrograms: WebAPIJobSettings = WebAPIJobSettings(
-        **allin1_webapi.model_dump(),
-        job_name='allin1_spectrograms',
-        queue='cpu_queue'
-    )
-
-    # allin1-webapiの構造解析のジョブキュー設定
-    allin1_webapi_job_structure: WebAPIJobSettings = WebAPIJobSettings(
-        **allin1_webapi.model_dump(), 
-        job_name='allin1_structure',
-        queue='gpu_queue'
-    )
-
+    ALLIN1_STRUCTURE_JOB_NAME: str = 'allin1_structure'
+    ALLIN1_STRUCTURE_JOB_QUEUE: str = 'gpu_queue'
+    ALLIN1_STRUCTURE_JOB_TIMEOUT: TimeoutType = 120 # ジョブが実行されてからのタイムアウト時間
+    ALLIN1_STRUCTURE_JOB_READ_TIMEOUT: TimeoutType = 120 # webapiと接続が確立されてからのタイムアウト時間
+    
     # zip圧縮webapiの設定
-    compression_webapi: WebAPISettings = WebAPISettings(
-        host='localhost'
-    )
-    # zip圧縮webapiのジョブキュー設定
-    compression_webapi_job: WebAPIJobSettings = WebAPIJobSettings(
-        **compression_webapi.model_dump(),
-        job_name='compression',
-        queue='cpu_queue'
-    )
+    COMPRESSION_HOST: str = 'localhost'
+    COMPRESSION_JOB_NAME: str = 'compression'
+    COMPRESSION_JOB_QUEUE: str = 'cpu_queue'
+    COMPRESSION_JOB_TIMEOUT: TimeoutType = 120 # ジョブが実行されてからのタイムアウト時間
+    COMPRESSION_JOB_READ_TIMEOUT: TimeoutType = 120 # webapiと接続が確立されてからのタイムアウト時間
 
-    gpu_worker: JobWorkerSettings = JobWorkerSettings(
-        queue='gpu_queue',
-        multiplicity=1
-    )
+    GPU_WORKER_QUEUE: str = 'gpu_queue'
+    GPU_WORKER_MULTIPLICITY: int = 1
 
-    cpu_worker: JobWorkerSettings = JobWorkerSettings(
-        queue='cpu_queue',
-        multiplicity=1
-    )
-
-    UPLOAD_FILE_CONTENT_TYPE: list[str] = ['audio/mpeg', 'audio/wav']
+    CPU_WORKER_QUEUE: str = 'cpu_queue'
+    CPU_WORKER_MULTIPLICITY: int = 1
 
     HTTP_HEADER_CONSUMER_ID: str = 'x_consumer_id'
 settings = Settings()

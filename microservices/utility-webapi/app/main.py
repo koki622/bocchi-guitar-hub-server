@@ -9,10 +9,8 @@ from app.core.config import settings
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    gpu_worker = settings.gpu_worker
-    cpu_worker = settings.cpu_worker
-    launch_workers(queue_name=gpu_worker.queue, worker_multiplicity=gpu_worker.multiplicity)
-    launch_workers(queue_name=cpu_worker.queue, worker_multiplicity=cpu_worker.multiplicity)
+    launch_workers(queue_name=settings.GPU_WORKER_QUEUE, worker_multiplicity=settings.GPU_WORKER_MULTIPLICITY)
+    launch_workers(queue_name=settings.CPU_WORKER_QUEUE, worker_multiplicity=settings.CPU_WORKER_MULTIPLICITY)
     yield
     
 app = FastAPI(

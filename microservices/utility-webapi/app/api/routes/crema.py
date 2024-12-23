@@ -22,15 +22,14 @@ def analyze_chord(request: Request, audiofile: Audiofile = Depends(get_audiofile
         )
     
     request_body = {'file_path': str(audiofile.audiofile_path)}
-    crema_job = settings.crema_webapi_job
     api_job = ApiJob(
-        job_name=crema_job.job_name,
-        dst_api_url=f'http://{crema_job.host}:{crema_job.port}',
-        queue_name=crema_job.queue,
+        job_name=settings.CREMA_JOB_NAME,
+        dst_api_url=f'http://{settings.CREMA_HOST}:{8000}',
+        queue_name=settings.CREMA_JOB_QUEUE,
         request_path='/',
-        job_timeout=crema_job.timeout,
+        job_timeout=settings.CREMA_JOB_TIMEOUT,
         request_body=request_body,
-        request_read_timeout=crema_job.read_timeout,
+        request_read_timeout=settings.CREMA_JOB_READ_TIMEOUT,
     )
 
     job = job_router.submit_jobs([api_job])[0]

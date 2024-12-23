@@ -32,58 +32,52 @@ def processAudio(request: Request, audiofile: Audiofile = Depends(get_audiofile)
     for path, message in error_conditions:
         if os.path.exists(path):
             raise HTTPException(status_code=400, detail=message)
-    
-    crema_job = settings.crema_webapi_job
-    demucs_job = settings.demucs_webapi_job
-    allin1_spectrograms_job = settings.allin1_webapi_job_spectrograms
-    allin1_structure_job = settings.allin1_webapi_job_structure
-    whisper_job = settings.whisper_webapi_job
 
     api_jobs = [
         ApiJob(
-            job_name=crema_job.job_name,
-            dst_api_url=f'http://{crema_job.host}:{crema_job.port}',
-            queue_name=crema_job.queue,
+            job_name=settings.CREMA_JOB_NAME,
+            dst_api_url=f'http://{settings.CREMA_HOST}:{8000}',
+            queue_name=settings.CREMA_JOB_QUEUE,
             request_path='/',
-            job_timeout=crema_job.timeout,
+            job_timeout=settings.CREMA_JOB_TIMEOUT,
             request_body={'file_path': str(audiofile.audiofile_path)},
-            request_read_timeout=crema_job.read_timeout,
+            request_read_timeout=settings.CREMA_JOB_READ_TIMEOUT,
         ),
         ApiJob(
-            job_name=demucs_job.job_name,
-            dst_api_url=f'http://{demucs_job.host}:{demucs_job.port}',
-            queue_name=demucs_job.queue,
+            job_name=settings.DEMUCS_JOB_NAME,
+            dst_api_url=f'http://{settings.DEMUCS_HOST}:{8000}',
+            queue_name=settings.DEMUCS_JOB_QUEUE,
             request_path='/',
-            job_timeout=demucs_job.timeout,
+            job_timeout=settings.DEMUCS_JOB_TIMEOUT,
             request_body={'file_path': str(audiofile.audiofile_path)},
-            request_read_timeout=demucs_job.read_timeout,
+            request_read_timeout=settings.DEMUCS_JOB_READ_TIMEOUT,
         ),
         ApiJob(
-            job_name=allin1_spectrograms_job.job_name,
-            dst_api_url=f'http://{allin1_spectrograms_job.host}:{allin1_spectrograms_job.port}',
-            queue_name=allin1_spectrograms_job.queue,
+            job_name=settings.ALLIN1_SPECTROGRAMS_JOB_NAME,
+            dst_api_url=f'http://{settings.ALLIN1_HOST}:{8000}',
+            queue_name=settings.ALLIN1_SPECTROGRAMS_JOB_QUEUE,
             request_path='/spectrograms',
-            job_timeout=allin1_spectrograms_job.timeout,
+            job_timeout=settings.ALLIN1_SPECTROGRAMS_JOB_TIMEOUT,
             request_body={'separated_path':str(audiofile.audiofile_directory / 'separated')},
-            request_read_timeout=allin1_spectrograms_job.read_timeout,
+            request_read_timeout=settings.ALLIN1_SPECTROGRAMS_JOB_READ_TIMEOUT,
         ),
         ApiJob(
-            job_name=allin1_structure_job.job_name,
-            dst_api_url=f'http://{allin1_structure_job.host}:{allin1_structure_job.port}',
-            queue_name=allin1_structure_job.queue,
+            job_name=settings.ALLIN1_STRUCTURE_JOB_NAME,
+            dst_api_url=f'http://{settings.ALLIN1_HOST}:{8000}',
+            queue_name=settings.ALLIN1_STRUCTURE_JOB_QUEUE,
             request_path='/structure',
-            job_timeout=allin1_structure_job.timeout,
+            job_timeout=settings.ALLIN1_STRUCTURE_JOB_TIMEOUT,
             request_body={"file_path":str(audiofile.audiofile_path), 'spectrograms_path':str(audiofile.audiofile_directory / 'spectrograms.npy')},
-            request_read_timeout=allin1_structure_job.read_timeout,
+            request_read_timeout=settings.ALLIN1_STRUCTURE_JOB_READ_TIMEOUT,
         ),
         ApiJob(
-            job_name=whisper_job.job_name,
-            dst_api_url=f'http://{whisper_job.host}:{whisper_job.port}',
-            queue_name=whisper_job.queue,
+            job_name=settings.WHISPER_JOB_NAME,
+            dst_api_url=f'http://{settings.WHISPER_HOST}:{8000}',
+            queue_name=settings.WHISPER_JOB_QUEUE,
             request_path='/',
-            job_timeout=whisper_job.timeout,
+            job_timeout=settings.WHISPER_JOB_TIMEOUT,
             request_body={'file_path': str(audiofile.audiofile_directory / 'separated' / 'vocals.wav')},
-            request_read_timeout=whisper_job.read_timeout,
+            request_read_timeout=settings.WHISPER_JOB_READ_TIMEOUT,
         )
     ]
     jobs = job_router.submit_jobs(api_jobs)

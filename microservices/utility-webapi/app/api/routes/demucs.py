@@ -30,15 +30,14 @@ def separate(request: Request, audiofile: Audiofile = Depends(get_audiofile), jo
         )
     
     request_body = {'file_path': str(audiofile.audiofile_path)}
-    demucs_job = settings.demucs_webapi_job
     api_job = ApiJob(
-        job_name=demucs_job.job_name,
-        dst_api_url=f'http://{demucs_job.host}:{demucs_job.port}',
-        queue_name=demucs_job.queue,
+        job_name=settings.DEMUCS_JOB_NAME,
+        dst_api_url=f'http://{settings.DEMUCS_HOST}:{8000}',
+        queue_name=settings.DEMUCS_JOB_QUEUE,
         request_path='/',
-        job_timeout=demucs_job.timeout,
+        job_timeout=settings.DEMUCS_JOB_TIMEOUT,
         request_body=request_body,
-        request_read_timeout=demucs_job.read_timeout,
+        request_read_timeout=settings.DEMUCS_JOB_READ_TIMEOUT,
     )
 
     job = job_router.submit_jobs([api_job])[0]
@@ -135,15 +134,14 @@ def compression_separated_audio(request: Request, audiofile: Audiofile = Depends
             detail='既に圧縮が完了しています。'
         )
     elif os.path.exists(separated_path):
-        compression_job = settings.compression_webapi_job
         api_job = ApiJob(
-            job_name=compression_job.job_name,
-            dst_api_url=f'http://{compression_job.host}:{compression_job.port}',
-            queue_name=compression_job.queue,
+            job_name=settings.COMPRESSION_JOB_NAME,
+            dst_api_url=f'http://{settings.COMPRESSION_HOST}:{8000}',
+            queue_name=settings.COMPRESSION_JOB_QUEUE,
             request_path=f'/demucs/separated-audio/{audiofile.audiofile_id}/zip',
-            job_timeout=compression_job.timeout,
+            job_timeout=settings.COMPRESSION_JOB_TIMEOUT,
             request_headers={settings.HTTP_HEADER_CONSUMER_ID:audiofile.consumer_id},
-            request_read_timeout=compression_job.read_timeout,
+            request_read_timeout=settings.COMPRESSION_JOB_READ_TIMEOUT,
         )
         job = job_router.submit_jobs([api_job])[0]
         return EventSourceResponse(

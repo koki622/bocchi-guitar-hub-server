@@ -1,5 +1,5 @@
 import redis.asyncio
-from app.core.config import settings
+from app.core.config import settings, UPLOAD_FILE_CONTENT_TYPE
 from app.core.heavy_job import HeavyJob
 from app.models import Audiofile, ChordList, Consumer, ConsumerHeaders, Structure
 from fastapi import Depends, File, HTTPException, Header, Path as fastapi_path, Query, UploadFile
@@ -13,7 +13,7 @@ def get_consumer(consumer_headers: ConsumerHeaders = Depends(get_consumer_header
     return Consumer(**consumer_headers.model_dump(), consumer_directory=consumer_dir)
 
 def validate_audiofile(file: UploadFile = File(...)) -> UploadFile:
-    if file.content_type not in settings.UPLOAD_FILE_CONTENT_TYPE:
+    if file.content_type not in UPLOAD_FILE_CONTENT_TYPE:
             raise HTTPException(
                 status_code=400,
                 detail=f'{file.content_type} 形式はサポートしていません'

@@ -24,15 +24,14 @@ def analyze_lyric(request: Request, audiofile: Audiofile = Depends(get_audiofile
     
     file_path = str(audiofile.audiofile_directory / 'separated' / 'vocals.wav')
     request_body = {'file_path': file_path}
-    whisper_job = settings.whisper_webapi_job
     api_job = ApiJob(
-        job_name=whisper_job.job_name,
-        dst_api_url=f'http://{whisper_job.host}:{whisper_job.port}',
-        queue_name=whisper_job.queue,
+        job_name=settings.WHISPER_JOB_NAME,
+        dst_api_url=f'http://{settings.WHISPER_HOST}:{8000}',
+        queue_name=settings.WHISPER_JOB_QUEUE,
         request_path='/',
-        job_timeout=whisper_job.timeout,
+        job_timeout=settings.WHISPER_JOB_TIMEOUT,
         request_body=request_body,
-        request_read_timeout=whisper_job.read_timeout,
+        request_read_timeout=settings.WHISPER_JOB_READ_TIMEOUT,
     )
 
     job = job_router.submit_jobs([api_job])[0]
