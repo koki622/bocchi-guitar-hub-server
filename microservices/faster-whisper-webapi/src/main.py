@@ -14,7 +14,6 @@ async def lifespan(app: FastAPI):
     whisper_model = WhisperModel(
         model_size_or_path="large-v2")
     print("モデルのロードが完了しました")
-    print('device: ', whisper_model.device)
     logging.basicConfig()
     logging.getLogger("faster_whisper").setLevel(logging.DEBUG)
     yield
