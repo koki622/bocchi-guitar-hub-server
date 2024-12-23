@@ -218,6 +218,7 @@ class HeavyJob:
         job_queue = q.enqueue(
             f=route_job,
             job_id=api_job_id,
+            result_ttl=259200, # 3day
             meta={'queue_name': api_job.queue_name, 'job_name': api_job.job_name},
             kwargs=job_kwargs,
             depends_on=depends_job,
