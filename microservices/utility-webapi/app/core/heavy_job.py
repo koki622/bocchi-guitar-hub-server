@@ -159,7 +159,7 @@ class HeavyJob:
         last_stream_id = _datetime_to_stream_id(enqueued_at)
         is_finished: bool= False
         while True:
-            messages = await self.redis_asyncio_conn.xread(streams={stream_name: last_stream_id})
+            messages = await self.redis_asyncio_conn.xread(streams={stream_name: last_stream_id}, count=100, block=0)
             for stream, message_list in messages:
                 for message_id, message_body in message_list:
                     src_stream_id = message_body['message']
