@@ -15,6 +15,7 @@ sse-starlette = "^2.1.2"
 faster-whisper = { git = "https://github.com/SYSTRAN/faster-whisper.git"}
 pysubs2 = "^1.7.2"
 onnxruntime = "<1.20.0"
+ctranslate2 = "4.4.0"
 
 [build-system]
 requires = ["poetry-core"]
