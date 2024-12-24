@@ -8,24 +8,34 @@ from faster_whisper import WhisperModel, tokenizer
 from datetime import datetime
 import logging
 
+# ログ設定
+logging.basicConfig(
+    level=logging.INFO,  # INFO以上のログを出力
+    format="%(asctime)s - %(levelname)s - %(message)s",  # フォーマットを指定
+    handlers=[
+        logging.StreamHandler()  # コンソールに出力
+    ]
+)
+logger = logging.getLogger(__name__)
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     global whisper_model
-    print("モデルをロードします")
+    logger.info("モデルをロードします")
     model_size = 'large-v3-turbo'
     if os.getenv('GPU_MODE', 'True') == 'True':
-        print('GPUモードで起動します')
+        logger.info('GPUモードで起動します')
         whisper_model = WhisperModel(
             model_size_or_path=model_size)
     else:
-        print('CPUモードで起動します')
+        logger.info('CPUモードで起動します')
         whisper_model = WhisperModel(
             device='cpu',
             model_size_or_path=model_size,
             compute_type='int8'
         )
     
-    print("モデルのロードが完了しました")
+    logger.info("モデルのロードが完了しました")
     logging.basicConfig()
     logging.getLogger("faster_whisper").setLevel(logging.DEBUG)
     yield
