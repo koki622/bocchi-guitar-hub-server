@@ -106,6 +106,7 @@ services:
       - ${FASTER_WHISPER_WEBAPI_PORT}:8000
     environment:
       - CONSUMER_VOLUME_PATH=${CONSUMER_VOLUME_PATH}
+      - GPU_MODE=False
     volumes:
       - ./microservices/faster-whisper-webapi/src:/app/src
       - consumer_data:${CONSUMER_VOLUME_PATH}

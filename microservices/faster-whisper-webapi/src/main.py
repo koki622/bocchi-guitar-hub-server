@@ -1,4 +1,5 @@
 import json
+import os
 from pathlib import Path
 from fastapi import FastAPI
 from contextlib import asynccontextmanager
@@ -11,8 +12,19 @@ import logging
 async def lifespan(app: FastAPI):
     global whisper_model
     print("モデルをロードします")
-    whisper_model = WhisperModel(
-        model_size_or_path="large-v3-turbo")
+    model_size = 'large-v3-turbo'
+    if os.getenv('GPU_MODE', 'True') == 'True':
+        print('GPUモードで起動します')
+        whisper_model = WhisperModel(
+            model_size_or_path=model_size)
+    else:
+        print('CPUモードで起動します')
+        whisper_model = WhisperModel(
+            device='cpu',
+            model_size_or_path=model_size,
+            compute_type='int8'
+        )
+    
     print("モデルのロードが完了しました")
     logging.basicConfig()
     logging.getLogger("faster_whisper").setLevel(logging.DEBUG)
