@@ -11,14 +11,28 @@ python = ">=3.9"
 fastapi = "0.111.0"
 uvicorn = "0.30.1"
 python-multipart = "^0.0.9"
-allin1 = "1.1.0"
-torch = { version = "=2.5.1+cpu", source = "pytorch-cpu" }
-torchvision = { version = "=0.20.1+cpu", source = "pytorch-cpu"}
-torchaudio = { version = "=2.5.1+cpu", source = "pytorch-cpu"}
+torch = [
+    { markers = "platform_machine == 'x86_64'", version = "=2.4.0", source = "pytorch-cpu" },
+    { markers = "platform_machine == 'aarch64'", url = "https://download.pytorch.org/whl/cpu/torch-2.4.0-cp39-cp39-manylinux_2_17_aarch64.manylinux2014_aarch64.whl#sha256=2786a47c8d8dec176fc679d2aab9a6f549c25452510b49650ab134135266ba33"}
+]
+torchvision = [
+    { markers = "platform_machine == 'x86_64'", version = "=0.19.0+cpu", source = "pytorch-cpu"},
+    { markers = "platform_machine == 'aarch64'", url = "https://download.pytorch.org/whl/cpu/torchvision-0.19.0-cp39-cp39-linux_aarch64.whl#sha256=5f9a598dcf82bdfc8e4436ce74763b3877dabec3b33f94613b94ede13e3e4dee"}
+]
+torchaudio = [
+    { markers = "platform_machine == 'x86_64'", version = "=2.4.0+cpu", source = "pytorch-cpu"},
+    { markers = "platform_machine == 'aarch64'", url ="https://download.pytorch.org/whl/cpu/torchaudio-2.4.0-cp39-cp39-linux_aarch64.whl#sha256=c840894de12a6dd3ea57cbb0d0086123aaa48001ba3ad99ef714fe009eae8eb9"}
+]
 madmom = { git = "https://github.com/CPJKU/madmom.git"}
-natten = { url = "https://shi-labs.com/natten/wheels/cpu/torch2.5.0/natten-0.17.3%2Btorch250cpu-cp39-cp39-linux_x86_64.whl"}
 numpy = "1.23.0"
 pydub = "^0.25.1"
+natten = [
+    { markers = "platform_machine == 'x86_64'", url = "https://shi-labs.com/natten/wheels/cpu/torch2.4.0/natten-0.17.3%2Btorch240cpu-cp39-cp39-linux_x86_64.whl"},
+    { markers = "platform_machine == 'aarch64'", path = "./natten-wheel/natten-0.17.3-cp39-cp39-linux_aarch64.whl"}
+
+    #{ markers = "platform_machine == 'aarch64'", git = "https://github.com/SHI-Labs/NATTEN.git", tag = "v0.17.3"}
+]
+allin1 = "1.1.0"
 
 [[tool.poetry.source]]
 name = "pytorch-cpu"
