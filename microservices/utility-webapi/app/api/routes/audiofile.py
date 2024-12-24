@@ -27,7 +27,10 @@ async def save_audiofile(validated_file: UploadFile = Depends(validate_audiofile
             await buffer.write(chunk)
     
     if validated_file.content_type != 'audio/wav':
-        audio = AudioSegment.from_file(audiofile_path, format=mimetypes.guess_extension(validated_file.content_type))
+        if validated_file.content_type == 'audio/mpeg':
+            audio = AudioSegment.from_mp3(audiofile_path)
+        else:
+            audio = AudioSegment.from_file(audiofile_path, format=mimetypes.guess_extension(validated_file.content_type))
         wav_audiofile_path = audiofile_dir / (audiofile_id + '.wav')
         audio.export(wav_audiofile_path, format='wav')
 
