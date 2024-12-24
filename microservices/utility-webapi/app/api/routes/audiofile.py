@@ -1,8 +1,9 @@
+import asyncio
 from pathlib import Path
 import shutil
 import anyio
 import shortuuid
-from fastapi import APIRouter, Depends, UploadFile
+from fastapi import APIRouter, Depends, HTTPException, UploadFile
 from app.models import Audiofile, AudiofileCreateResponse, Consumer
 from app.api.deps import get_audiofile, get_consumer, validate_audiofile
 from pydub import AudioSegment
@@ -34,5 +35,11 @@ async def save_audiofile(validated_file: UploadFile = Depends(validate_audiofile
 
 @router.delete("/{audiofile_id}", description='オーディオファイルを削除する。')
 async def delete_audiofile(audiofile: Audiofile = Depends(get_audiofile)):
-    shutil.rmtree(audiofile.audiofile_directory)
-    return('ok')
+    try:
+        await asyncio.to_thread(shutil.rmtree, audiofile.audiofile_directory)
+        return('ok')
+    except FileNotFoundError:
+        raise HTTPException(
+            status_code=404,
+            detail='ファイルが見つかりませんでした。'
+        )

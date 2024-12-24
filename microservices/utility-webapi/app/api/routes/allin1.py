@@ -1,4 +1,6 @@
+import asyncio
 import os
+import shutil
 from typing import Literal
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import FileResponse
@@ -153,4 +155,14 @@ def response_click_sound(
             status_code=500,
             detail='不明なエラー。'  
         )
-    
+
+@router.delete("/structure/{audiofile_id}")
+async def delete_structure(audiofile: Audiofile = Depends(get_audiofile)):
+    try:
+        await asyncio.to_thread(shutil.rmtree, audiofile.audiofile_directory / 'structure')
+        return 'ok'
+    except FileNotFoundError:
+        raise HTTPException(
+            status_code=404,
+            detail='音楽構造の解析結果が存在しません'
+        )

@@ -1,4 +1,6 @@
+import asyncio
 import os
+import shutil
 from typing import Literal
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import FileResponse
@@ -103,4 +105,14 @@ def response_chord(
                 media_type=media_types[download_file_format],
                 headers={"Content-Disposition": f'attachment; filename={audiofile.audiofile_id}_{eighth_stem}_{file_stem}.{download_file_format}'}
             )
-    
+
+@router.delete('/chord/{audiofile_id}')
+async def delete_chord(audiofile: Audiofile = Depends(get_audiofile)):
+    try:
+        await asyncio.to_thread(shutil.rmtree, audiofile.audiofile_directory / 'chord')
+        return 'ok'
+    except FileNotFoundError:
+        raise HTTPException(
+            status_code=404,
+            detail='コードの結果が存在しません。'
+        )

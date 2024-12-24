@@ -1,6 +1,8 @@
+import asyncio
 from enum import Enum
 import json
 import os
+import aiofiles
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sse_starlette import EventSourceResponse
 from app.api.deps import get_audiofile, get_heavy_job
@@ -118,6 +120,7 @@ def analyze_lyric(
     language_code: LanguageCode = Query(LanguageCode.ja, alias='language-code'),
     audiofile: Audiofile = Depends(get_audiofile), 
     job_router: HeavyJob = Depends(get_heavy_job)) -> EventSourceResponse:
+    
     if os.path.exists(audiofile.audiofile_directory / 'lyric.txt'):
         raise HTTPException(
             status_code=400,
@@ -147,6 +150,24 @@ def analyze_lyric(
     )
 
 @router.get('/lyric/{audiofile_id}')
-def response_lyric(audiofile: Audiofile = Depends(get_audiofile)):
-    with open(audiofile.audiofile_directory / 'lyric.txt') as f:
-        return json.load(f)
+async def response_lyric(audiofile: Audiofile = Depends(get_audiofile)):
+    try:
+        async with aiofiles.open(audiofile.audiofile_directory / 'lyric.txt', mode='r') as f:
+            content = await f.read()
+            return json.loads(content)
+    except FileNotFoundError:
+        raise HTTPException(
+            status_code=404,
+            detail='結果が見つかりませんでした。'
+        )
+
+@router.delete('/lyric/{audiofile_id}')
+async def delete_lyric(audiofile: Audiofile = Depends(get_audiofile)):
+    try:
+        await asyncio.to_thread(os.remove, audiofile.audiofile_directory / 'lyric.txt')
+        return 'ok'
+    except FileNotFoundError:
+        raise HTTPException(
+            status_code=404,
+            detail='結果が見つかりませんでした。'
+        )

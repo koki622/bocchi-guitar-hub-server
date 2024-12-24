@@ -1,8 +1,9 @@
 import os
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sse_starlette import EventSourceResponse
 
 from app.api.deps import get_audiofile, get_heavy_job
+from app.api.routes.whisper import LanguageCode
 from app.core.config import settings
 from app.core.heavy_job import ApiJob, HeavyJob
 from app.models import Audiofile
@@ -18,7 +19,13 @@ def getJobStatus(request: Request, job_id: str, job_router: HeavyJob = Depends(g
     )
 
 @router.post('/process-audio/{audiofile_id}')
-def processAudio(request: Request, audiofile: Audiofile = Depends(get_audiofile), job_router: HeavyJob = Depends(get_heavy_job)) -> EventSourceResponse:
+def processAudio(
+    request: Request, 
+    audiofile: Audiofile = Depends(get_audiofile), 
+    job_router: HeavyJob = Depends(get_heavy_job),
+    is_analyze_lyric: bool = Query(True, alias='is-analyze-lyric'),
+    language_code: LanguageCode = Query(LanguageCode.ja, alias='language-code')
+) -> EventSourceResponse:
     # エラー条件とメッセージをリストで定義
     error_conditions = [
         (audiofile.audiofile_directory / 'chord.json', '既にコード進行の解析がされています。'),
@@ -70,16 +77,19 @@ def processAudio(request: Request, audiofile: Audiofile = Depends(get_audiofile)
             request_body={"file_path":str(audiofile.audiofile_path), 'spectrograms_path':str(audiofile.audiofile_directory / 'spectrograms.npy')},
             request_read_timeout=settings.ALLIN1_STRUCTURE_JOB_TIMEOUT,
         ),
-        ApiJob(
-            job_name=settings.WHISPER_JOB_NAME,
-            dst_api_url=f'http://{settings.WHISPER_HOST}:{8000}',
-            queue_name=settings.WHISPER_JOB_QUEUE,
-            request_path='/',
-            job_timeout=settings.WHISPER_JOB_TIMEOUT,
-            request_body={'file_path': str(audiofile.audiofile_directory / 'separated' / 'vocals.wav')},
-            request_read_timeout=settings.WHISPER_JOB_TIMEOUT,
-        )
     ]
+    analyze_lyric_apijob = ApiJob(
+        job_name=settings.WHISPER_JOB_NAME,
+        dst_api_url=f'http://{settings.WHISPER_HOST}:{8000}',
+        queue_name=settings.WHISPER_JOB_QUEUE,
+        request_path='/',
+        job_timeout=settings.WHISPER_JOB_TIMEOUT,
+        request_body={'file_path': str(audiofile.audiofile_directory / 'separated' / 'vocals.wav'), 'language_code': language_code},
+        request_read_timeout=settings.WHISPER_JOB_TIMEOUT,
+    )
+    if is_analyze_lyric: 
+        api_jobs.append(analyze_lyric_apijob)
+        
     jobs = job_router.submit_jobs(api_jobs)
     return EventSourceResponse(
         job_router.stream_job_status(request=request, job=jobs[0])

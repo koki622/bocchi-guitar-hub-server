@@ -1,5 +1,8 @@
+import asyncio
 from pathlib import Path
 from typing import Literal
+import aiofiles
+import aiofiles.os
 from fastapi import APIRouter, HTTPException, Query, Request, Depends
 from fastapi.responses import FileResponse
 import os
@@ -109,17 +112,17 @@ def response_separated_audio(request: Request, audiofile: Audiofile = Depends(ge
         )
 
 @router.delete('/separated-audio/{audiofile_id}')
-def delete_separated_audio(audiofile: Audiofile = Depends(get_audiofile)):
+async def delete_separated_audio(audiofile: Audiofile = Depends(get_audiofile)):
     delete_count = 0
-    if os.path.exists(audiofile.audiofile_directory / 'separated'):
-        shutil.rmtree(audiofile.audiofile_directory / 'separated')
+    if await aiofiles.os.path.exists(audiofile.audiofile_directory / 'separated'):
+        await asyncio.to_thread(shutil.rmtree, audiofile.audiofile_directory / 'separated')
         delete_count += 1
-    if os.path.exists(audiofile.audiofile_directory / 'separated.zip'):
-        os.remove(audiofile.audiofile_directory / 'separated.zip')
+    if await aiofiles.os.path.exists(audiofile.audiofile_directory / 'separated.zip'):
+        await aiofiles.os.remove(audiofile.audiofile_directory / 'separated.zip')
         delete_count += 1
     if delete_count == 0:
         raise HTTPException(
-            status_code=400,
+            status_code=404,
             detail='音声の分離結果が存在しません。'
         )
     return('ok')
