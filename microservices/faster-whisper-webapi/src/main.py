@@ -2,8 +2,8 @@ import json
 from pathlib import Path
 from fastapi import FastAPI
 from contextlib import asynccontextmanager
-from pydantic import BaseModel
-from faster_whisper import WhisperModel
+from pydantic import BaseModel, field_validator
+from faster_whisper import WhisperModel, tokenizer
 from datetime import datetime
 import logging
 
@@ -12,7 +12,7 @@ async def lifespan(app: FastAPI):
     global whisper_model
     print("モデルをロードします")
     whisper_model = WhisperModel(
-        model_size_or_path="large-v2")
+        model_size_or_path="large-v3-turbo")
     print("モデルのロードが完了しました")
     logging.basicConfig()
     logging.getLogger("faster_whisper").setLevel(logging.DEBUG)
@@ -21,17 +21,25 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 
-class FilePathBody(BaseModel):
+class AnalyzeLyricRequest(BaseModel):
     file_path: str
+    language_code: str
+
+    @field_validator('language_code')
+    def validate_language_code(cls, v):
+        if v not in tokenizer._LANGUAGE_CODES:
+            raise ValueError("Invalid language code.")
+        return v
+
 
 @app.post("/")
-def analyze_lyric(body: FilePathBody):
+def analyze_lyric(body: AnalyzeLyricRequest):
     file_path = body.file_path
     now = datetime.now()
     print(now)
- 
+
     try:
-        segments, info = whisper_model.transcribe(file_path, language="ja", word_timestamps=True)
+        segments, info = whisper_model.transcribe(file_path, language=body.language_code, word_timestamps=True, hallucination_silence_threshold=2)
         word_results= []
         segment_results = []
         for segment in segments:
