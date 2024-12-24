@@ -3,15 +3,19 @@ from contextlib import asynccontextmanager
 
 import uvicorn
 
-from app.worker import launch_workers
+from app.worker import launch_workers, kill_worker
 from app.api.main import api_router
 from app.core.config import settings
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    kill_worker()
     launch_workers(queue_name=settings.GPU_WORKER_QUEUE, worker_multiplicity=settings.GPU_WORKER_MULTIPLICITY)
     launch_workers(queue_name=settings.CPU_WORKER_QUEUE, worker_multiplicity=settings.CPU_WORKER_MULTIPLICITY)
+
     yield
+    # 起動中のワーカーをキル
+    kill_worker()
     
 app = FastAPI(
     lifespan=lifespan,

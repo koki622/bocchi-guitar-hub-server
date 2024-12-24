@@ -4,7 +4,7 @@
 import os
 import subprocess
 import sys
-from rq import Worker, Queue, Connection
+from rq import Worker, Queue, Connection, command
 from redis import Redis
 from app.core.config import settings
 
@@ -39,4 +39,8 @@ if __name__ == '__main__':
     queue_name = sys.argv[1]
     start_worker(queue_name)
 
-    
+def kill_worker():
+    workers = Worker.all(r)
+    print(f'workers: {workers}')
+    for worker in workers:
+        command.send_shutdown_command(r, worker.name)
