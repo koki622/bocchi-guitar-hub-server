@@ -2,7 +2,7 @@ import redis.asyncio
 from app.core.config import settings, UPLOAD_FILE_CONTENT_TYPE
 from app.core.heavy_job import HeavyJob
 from app.models import Audiofile, ChordList, Consumer, ConsumerHeaders, Structure
-from fastapi import Depends, File, HTTPException, Header, Path as fastapi_path, Query, UploadFile
+from fastapi import Depends, File, HTTPException, Header, Path as fastapi_path, Query, Request, UploadFile
 from pathlib import Path
 
 def get_consumer_headers(consumer_id :str = Header(settings.ANONYMOUS_CONSUMER_NAME, alias=settings.HTTP_HEADER_CONSUMER_ID)) -> ConsumerHeaders:
@@ -49,21 +49,27 @@ def get_structure(
         )
     return structure.convert_splited_beats_into_eighths() if eighth_beat else structure
 
-def get_asyncio_redis_conn() -> redis.asyncio.Redis:
-    return redis.asyncio.Redis(
-        host=settings.REDIS_HOST, 
-        port=settings.REDIS_PORT, 
-        decode_responses=True,
-        health_check_interval=10,
-        socket_connect_timeout=5,
-        retry_on_timeout=True,
-        socket_keepalive=True
-    )
+_redis_pool = None
+def get_redis_asyncio_pool():
+    global _redis_pool
+    if _redis_pool is None:
+        _redis_pool = redis.asyncio.Redis.from_pool(
+            redis.asyncio.ConnectionPool(
+                host=settings.REDIS_HOST, 
+                port=settings.REDIS_PORT,
+                decode_responses=True,
+                health_check_interval=10,
+                socket_connect_timeout=5,
+                retry_on_timeout=True,
+                socket_keepalive=True
+            )
+        )
+    print('最大接続数：' ,_redis_pool.connection_pool.max_connections)
+    return _redis_pool
 
 def get_heavy_job() -> HeavyJob:
-    r_asyncio = get_asyncio_redis_conn()
     return HeavyJob(
         redis_host=settings.REDIS_HOST, 
         redis_port=settings.REDIS_PORT, 
-        redis_asyncio_conn=r_asyncio, 
+        redis_asyncio_conn= get_redis_asyncio_pool(), 
     )

@@ -13,7 +13,7 @@ from rq import Queue, Callback
 from rq.job import Job, JobStatus
 from rq.results import Result
 import shortuuid
-import requests
+import httpx
 from requests.exceptions import Timeout
 import json
 from typing import Literal, Optional, Union
@@ -124,13 +124,14 @@ async def route_job(
 ):
     url = api_job.dst_api_url + api_job.request_path
     try:
-        response = requests.post(
-            url=url, 
-            json=api_job.request_body, 
-            headers=api_job.request_headers, 
-            timeout=(api_job.dst_api_connect_timeout, api_job.request_read_timeout)
-        )
-        response.raise_for_status()
+        async with httpx.AsyncClient() as client:
+            response: httpx.Response = await client.post(
+                url=url, 
+                json=api_job.request_body, 
+                headers=api_job.request_headers, 
+                timeout=(api_job.dst_api_connect_timeout, api_job.request_read_timeout)
+            )
+            response.raise_for_status()
         return {'next_job_id': next_job_id}
     except Timeout as e:
         raise e
