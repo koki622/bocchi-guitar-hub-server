@@ -11,15 +11,21 @@ ENV PATH /root/.local/bin:$PATH
 RUN mkdir app
 
 WORKDIR /app
-COPY . .
 
 RUN apt-get update &&\
-    apt-get -y install locales ffmpeg fluidsynth &&\
-    localedef -f UTF-8 -i ja_JP ja_JP.UTF-8
+apt-get -y install locales ffmpeg fluidsynth &&\
+localedef -f UTF-8 -i ja_JP ja_JP.UTF-8
 
-RUN pip install poetry &&\
-    poetry config virtualenvs.create false &&\
+COPY . .
+
+RUN pip install poetry
+
+COPY pyproject.toml ./pyproject.toml
+
+RUN poetry config virtualenvs.create false &&\
     poetry lock &&\
     poetry install --no-root
 
 ENV PYTHONPATH=/app
+
+COPY app ./app
