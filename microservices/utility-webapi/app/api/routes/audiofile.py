@@ -1,4 +1,5 @@
 import asyncio
+import mimetypes
 from pathlib import Path
 import shutil
 import anyio
@@ -24,12 +25,11 @@ async def save_audiofile(validated_file: UploadFile = Depends(validate_audiofile
     async with await anyio.open_file(audiofile_path, 'wb') as buffer:
         while chunk := await validated_file.read(2048):
             await buffer.write(chunk)
-
-    if validated_file.content_type == 'audio/mpeg':
-        # アップロードされた音声ファイルがmp3の場合、wavに変換
-        mp3_audio = AudioSegment.from_mp3(audiofile_path)
+    
+    if validated_file.content_type != 'audio/wav':
+        audio = AudioSegment.from_file(audiofile_path, format=mimetypes.guess_extension(validated_file.content_type))
         wav_audiofile_path = audiofile_dir / (audiofile_id + '.wav')
-        mp3_audio.export(wav_audiofile_path, format='wav')
+        audio.export(wav_audiofile_path, format='wav')
 
     return AudiofileCreateResponse(audiofile_id=audiofile_id)
 

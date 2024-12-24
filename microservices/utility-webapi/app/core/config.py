@@ -5,7 +5,7 @@ from typing_extensions import Union
 
 TimeoutType = Union[int, float] | None
 
-UPLOAD_FILE_CONTENT_TYPE = ['audio/mpeg', 'audio/wav']
+UPLOAD_FILE_CONTENT_TYPE = ['audio/mpeg', 'audio/wav', 'audio/aac', 'audio/ogg', 'audio/flac']
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
