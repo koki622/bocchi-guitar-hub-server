@@ -10,5 +10,11 @@
 ## アーキテクチャ図
 掲載予定
 
-## 起動方法
+## Docker-Composeを使用した起動方法
 Docker Composeを用いた迅速なデプロイが可能となっています。
+
+####1. リポジトリをクローンする
+```bash
+git clone https://github.com/koki622/bocchi-guitar-hub-server.git
+cd bocchi-guitar-hub-server/
+```
