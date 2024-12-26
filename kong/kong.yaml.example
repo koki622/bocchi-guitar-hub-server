@@ -1,0 +1,159 @@
+_format_version: "3.0"
+services:
+- connect_timeout: 60000
+  enabled: true
+  host: utility-webapi
+  name: utility-webapi
+  port: 8000
+  protocol: http
+  read_timeout: 60000
+  retries: 5
+  routes:
+  - hosts:
+    - localhost
+    https_redirect_status_code: 426
+    methods:
+    - GET
+    - POST
+    - DELETE
+    name: allin1
+    path_handling: v0
+    paths:
+    - /allin1
+    preserve_host: false
+    protocols:
+    - http
+    - https
+    regex_priority: 0
+    request_buffering: true
+    response_buffering: true
+    strip_path: false
+  - hosts:
+    - localhost
+    https_redirect_status_code: 426
+    methods:
+    - GET
+    - POST
+    name: async-job
+    path_handling: v0
+    paths:
+    - /async-job
+    preserve_host: false
+    protocols:
+    - http
+    - https
+    regex_priority: 0
+    request_buffering: true
+    response_buffering: true
+    strip_path: false
+  - hosts:
+    - localhost
+    https_redirect_status_code: 426
+    methods:
+    - POST
+    - DELETE
+    name: audiofile
+    path_handling: v0
+    paths:
+    - /audiofile
+    preserve_host: false
+    protocols:
+    - http
+    - https
+    regex_priority: 0
+    request_buffering: true
+    response_buffering: true
+    strip_path: false
+  - hosts:
+    - localhost
+    https_redirect_status_code: 426
+    methods:
+    - POST
+    - DELETE
+    name: consumer
+    path_handling: v0
+    paths:
+    - /consumer
+    preserve_host: false
+    protocols:
+    - http
+    - https
+    regex_priority: 0
+    request_buffering: true
+    response_buffering: true
+    strip_path: false
+  - hosts:
+    - localhost
+    https_redirect_status_code: 426
+    methods:
+    - GET
+    - POST
+    - DELETE
+    name: crema
+    path_handling: v0
+    paths:
+    - /crema
+    preserve_host: false
+    protocols:
+    - http
+    - https
+    regex_priority: 0
+    request_buffering: true
+    response_buffering: true
+    strip_path: false
+  - hosts:
+    - localhost
+    https_redirect_status_code: 426
+    methods:
+    - GET
+    - POST
+    - DELETE
+    name: demucs
+    path_handling: v0
+    paths:
+    - /demucs
+    preserve_host: false
+    protocols:
+    - http
+    - https
+    regex_priority: 0
+    request_buffering: true
+    response_buffering: true
+    strip_path: false
+  - hosts:
+    - localhost
+    https_redirect_status_code: 426
+    methods:
+    - GET
+    name: docs
+    path_handling: v0
+    paths:
+    - /docs
+    preserve_host: false
+    protocols:
+    - http
+    - https
+    regex_priority: 0
+    request_buffering: true
+    response_buffering: true
+    strip_path: false
+  - hosts:
+    - localhost
+    https_redirect_status_code: 426
+    methods:
+    - GET
+    - POST
+    - DELETE
+    name: whisper
+    path_handling: v0
+    paths:
+    - /whisper
+    preserve_host: false
+    protocols:
+    - http
+    - https
+    regex_priority: 0
+    request_buffering: true
+    response_buffering: true
+    strip_path: false
+  write_timeout: 60000

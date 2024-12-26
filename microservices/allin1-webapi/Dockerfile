@@ -9,12 +9,14 @@ ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 
 WORKDIR /app
 
-COPY . .
-
 RUN apt-get update &&\
     apt install -y pip ffmpeg curl git &&\
     curl -sSL https://install.python-poetry.org | python3 -
 
+COPY pyproject.toml ./pyproject.toml
+
 RUN poetry config virtualenvs.create false &&\
     poetry lock &&\
     poetry install --no-root
+
+COPY src ./src

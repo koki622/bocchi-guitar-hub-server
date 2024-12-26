@@ -12,7 +12,7 @@ networks:
 
 volumes:
   consumer_data:
-  kong_db_data:
+  kong_data:
   redis_data:
 
 services:
@@ -28,8 +28,23 @@ services:
       - webapi-net
     restart: on-failure
 
+  kong-migrations-up:
+    image: kong:3.7.1-ubuntu
+    platform: linux/arm64
+    command: kong migrations up && kong migrations finish
+    depends_on: 
+      - kong-db  
+    environment:
+      <<: *kong-env
+    networks:
+      - webapi-net
+    restart: on-failure
+
   kong:
     image: kong:3.7.1-ubuntu
+    depends_on:
+      kong-db:
+        condition: service_healthy
     platform: linux/arm64
     environment:
       <<: *kong-env
@@ -50,7 +65,29 @@ services:
       - "8443:8443"
       - "8444:8444"
       - "8445:8445"
+    healthcheck:
+      test: ["CMD", "kong", "health"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
     restart: on-failure:5
+  
+  kong-deck:
+    image: kong/deck
+    platform: linux/arm64
+    environment:
+      DECK_KONG_ADDR: http://kong:8001
+    entrypoint: >
+      sh -c "sh /scripts/kong-init.sh && while true; do sleep 1000; done"
+    depends_on:
+      kong:
+        condition: service_healthy
+    volumes:
+      - ./kong/kong.yaml:/home/deckuser/kong.yaml
+      - ./kong/kong-init.sh:/scripts/kong-init.sh
+    restart: on-failure
+    networks:
+      - webapi-net
 
   kong-db:
     image: postgres:16.1-alpine
@@ -60,7 +97,20 @@ services:
       POSTGRES_USER: kong
       POSTGRES_PASSWORD: kongpass
     volumes:
-      - kong_db_data:/var/lib/postgresql/data
+      - kong_data:/var/lib/postgresql/data
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "pg_isready",
+          "-d",
+          "${KONG_PG_DATABASE:-kong}",
+          "-U",
+          "${KONG_PG_USER:-kong}"
+        ]
+      interval: 30s
+      timeout: 30s
+      retries: 3
     restart: on-failure
     stdin_open: true
     tty: true
@@ -82,8 +132,6 @@ services:
     build:
       context: ./microservices/utility-webapi
       dockerfile: Dockerfile
-    ports:
-      - ${UTILITY_WEBAPI_PORT}:8000
     environment:
       - CONSUMER_VOLUME_PATH=${CONSUMER_VOLUME_PATH}
       - DEMUCS_JOB_TIMEOUT=1200
@@ -102,8 +150,6 @@ services:
     build:
       context: ./microservices/faster-whisper-webapi
       dockerfile: Dockerfile.cpu
-    ports:
-      - ${FASTER_WHISPER_WEBAPI_PORT}:8000
     environment:
       - CONSUMER_VOLUME_PATH=${CONSUMER_VOLUME_PATH}
       - GPU_MODE=False
@@ -113,14 +159,11 @@ services:
     networks:
       - webapi-net
     command: uvicorn src.main:app --host 0.0.0.0 --port 8000 --reload
-    #command: /bin/sh -c "while sleep 1000; do :; done"
 
   demucs-webapi:
     build: 
       context: ./microservices/demucs-webapi
       dockerfile: Dockerfile.cpu
-    ports:
-      - ${DEMUCS_WEBAPI_PORT}:8000
     environment:
       - CONSUMER_VOLUME_PATH=${CONSUMER_VOLUME_PATH}
     volumes:
@@ -129,18 +172,13 @@ services:
     networks:
       - webapi-net
     command: uvicorn src.main:app --host 0.0.0.0 --port 8000 --reload
-    #command: /bin/sh -c "while sleep 1000; do :; done"
-  
 
   allin1-webapi:
-    #image: fbcc5bf1d745
     build:
       context: ./microservices/allin1-webapi
       args:
         MACHINE_PLATFORM:  "aarch64"
       dockerfile: Dockerfile.cpu
-    ports:
-      - ${ALLIN1_WEBAPI_PORT}:8000
     environment:
       - CONSUMER_VOLUME_PATH=${CONSUMER_VOLUME_PATH}
     volumes:
@@ -149,17 +187,11 @@ services:
     networks:
       - webapi-net
     command: uvicorn src.main:app --host 0.0.0.0 --port 8000 --reload
-    #command: /bin/sh -c "while sleep 1000; do :; done"
-    #command: /bin/sh -c "while sleep 1000; do :; done"
-
-
 
   crema-webapi:
     build:
       context: ./microservices/crema-webapi
       dockerfile: Dockerfile
-    ports:
-      - ${CREMA_WEBAPI_PORT}:8000
     environment:
       - CONSUMER_VOLUME_PATH=${CONSUMER_VOLUME_PATH}
       - LD_PRELOAD=/usr/local/lib/python3.9/site-packages/sklearn/utils/../../scikit_learn.libs/libgomp-d22c30c5.so.1.0.0
@@ -169,6 +201,3 @@ services:
     networks:
       - webapi-net
     command: uvicorn src.main:app --host 0.0.0.0 --port 8000 --reload
-    #command: /bin/sh -c "while sleep 1000; do :; done"
-
-

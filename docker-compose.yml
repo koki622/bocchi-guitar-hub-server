@@ -12,7 +12,7 @@ networks:
 
 volumes:
   consumer_data:
-  kong_db_data:
+  kong_data:
   redis_data:
 
 services:
@@ -20,7 +20,19 @@ services:
     image: kong:3.7.1
     command: kong migrations bootstrap
     depends_on:
+      - kong-db     
+    environment:
+      <<: *kong-env
+    networks:
+      - webapi-net
+    restart: on-failure
+  
+  kong-migrations-up:
+    image: kong:3.7.1
+    command: kong migrations up && kong migrations finish
+    depends_on: 
       - kong-db
+      
     environment:
       <<: *kong-env
     networks:
@@ -29,6 +41,9 @@ services:
 
   kong:
     image: kong:3.7.1
+    depends_on:
+      kong-db:
+        condition: service_healthy
     environment:
       <<: *kong-env
       KONG_PROXY_ACCESS_LOG: /dev/stdout
@@ -48,7 +63,28 @@ services:
       - "8443:8443"
       - "8444:8444"
       - "8445:8445"
+    healthcheck:
+      test: ["CMD", "kong", "health"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
     restart: on-failure:5
+
+  kong-deck:
+    image: kong/deck
+    environment:
+      DECK_KONG_ADDR: http://kong:8001
+    entrypoint: >
+      sh -c "sh /scripts/kong-init.sh && while true; do sleep 1000; done"
+    depends_on:
+      kong:
+        condition: service_healthy
+    volumes:
+      - ./kong/kong.yaml:/home/deckuser/kong.yaml
+      - ./kong/kong-init.sh:/scripts/kong-init.sh
+    restart: on-failure
+    networks:
+      - webapi-net
 
   kong-db:
     image: postgres:16.1-bullseye
@@ -57,7 +93,20 @@ services:
       POSTGRES_USER: kong
       POSTGRES_PASSWORD: kongpass
     volumes:
-      - kong_db_data:/var/lib/postgresql/data
+      - kong_data:/var/lib/postgresql/data
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "pg_isready",
+          "-d",
+          "${KONG_PG_DATABASE:-kong}",
+          "-U",
+          "${KONG_PG_USER:-kong}"
+        ]
+      interval: 30s
+      timeout: 30s
+      retries: 3
     restart: on-failure
     stdin_open: true
     tty: true
@@ -123,10 +172,9 @@ services:
   
 
   allin1-webapi:
-    image: sha256:6e6dabdf2c7117605ebbb61b87e57f70cc34c573c0f3f567d0f25c946a639221
-    #build:
-    #  context: ./microservices/allin1-webapi
-    #  dockerfile: Dockerfile
+    build:
+      context: ./microservices/allin1-webapi
+      dockerfile: Dockerfile
     environment:
       - CONSUMER_VOLUME_PATH=${CONSUMER_VOLUME_PATH}
     volumes:
@@ -140,9 +188,6 @@ services:
           devices:
             - capabilities: [gpu]
     command: uvicorn src.main:app --host 0.0.0.0 --port 8000 --reload
-    #command: /bin/sh -c "while sleep 1000; do :; done"
-
-
 
   crema-webapi:
     build:

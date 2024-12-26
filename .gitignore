@@ -1,6 +1,6 @@
 .env
 api-gateway/
-kong/
+kong/kong.yaml
 microservices/crema-webapi/poetry.lock
 microservices/utility-webapi/poetry.lock
 microservices/faster-whisper-webapi/poetry.lock

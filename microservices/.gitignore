@@ -2,5 +2,6 @@ crema(cuda)-webapi/
 whisper-webapi/
 .env
 docker-compose.yml
+redis/data
 **/__pycache__/**
 **/poetry.lock/**
