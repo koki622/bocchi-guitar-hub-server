@@ -1,5 +1,3 @@
-from enum import Enum
-from pydantic import BaseModel, Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing_extensions import Union
 
@@ -37,7 +35,7 @@ class Settings(BaseSettings):
     WHISPER_HOST: str = 'faster-whisper-webapi'
     WHISPER_JOB_NAME: str = 'whisper'
     WHISPER_JOB_QUEUE: str = 'gpu_queue'
-    WHISPER_JOB_TIMEOUT: TimeoutType = 300 # ジョブが実行されてからのタイムアウト時間
+    WHISPER_JOB_TIMEOUT: TimeoutType = 120 # ジョブが実行されてからのタイムアウト時間
 
     # allin1-webapiの設定
     ALLIN1_HOST: str = 'allin1-webapi'

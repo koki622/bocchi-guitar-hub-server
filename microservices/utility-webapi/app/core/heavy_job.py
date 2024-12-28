@@ -158,23 +158,17 @@ class HeavyJob:
             enqueued_at:datetime
     ) -> AsyncGenerator[int, None]:
         last_stream_id = _datetime_to_stream_id(enqueued_at)
-        is_finished: bool= False
         while True:
             messages = await self.redis_asyncio_conn.xread(streams={stream_name: last_stream_id}, count=100, block=0)
             for stream, message_list in messages:
                 for message_id, message_body in message_list:
                     src_stream_id = message_body['message']
                     if src_stream_id == job_id:
-                        is_finished = True 
-                        break
+                        return
                     if queue_position is not None:
                         queue_position -= 1
                         yield queue_position
                     last_stream_id = message_id
-                if is_finished: 
-                    break
-            if is_finished: 
-                break
             
     def _generate_job_status_message(self, job_name: str, job_id: str, job_status: Literal['processing soon', 'queued', 'enqueue success', 'job success', 'job failed', 'job completed'], queue_position: int = None) -> dict:
         data = {
@@ -283,89 +277,3 @@ class HeavyJob:
             except asyncio.CancelledError as e:
                 print("クライアントからの接続が切れました")
                 break
-
-    '''
-    async def stream(
-        self,
-        api_job: Job
-    ):
-        """ジョブキューの状況をServer Sent Eventsでレスポンスするためのジェネレータを返します。
-
-        Args:
-            request (Request): _description_
-            queue_name (str): _description_
-            job_timeout (Union[int, str], optional): _description_. Defaults to 60.
-            request_path (str, optional): _description_. Defaults to "/".
-            request_headers (dict, optional): _description_. Defaults to None.
-            request_body (dict, optional): _description_. Defaults to None.
-            request_read_timeout (Union[int, float], optional): _description_. Defaults to None.
-
-        Raises:
-            e: _description_
-
-        Yields:
-            _type_: _description_
-        """
-        redis_conn = Redis(self.redis_host, self.redis_port)
-        q = Queue(name=queue_name, connection=redis_conn)
-    
-        job_id = shortuuid.ShortUUID().random(length=10)
-        job_kwargs = {
-            "dst_api_host": self.dst_api_host,
-            "dst_api_port": self.dst_api_port,
-            "connect_timeout": self.dst_api_conenect_timeout,
-            "path": request_path, 
-            'headers':request_headers,
-            "payload": request_body, 
-            "read_timeout": request_read_timeout
-        }
-        
-        try:  
-            job_queue = q.enqueue(
-                f=route_job,
-                job_id=job_id,
-                job_timeout=job_timeout,
-                meta={'queue_name':queue_name},
-                kwargs=job_kwargs,
-                on_success=Callback(_notify_job_success),
-                on_failure=Callback(_notify_job_failure)
-            )
-
-            job_id = job_queue.id
-            enqueued_at = job_queue.enqueued_at
-            
-            yield self.generate_job_status_message(job_id, 'enqueue success')
-    
-            queue_position = job_queue.get_position()
-        
-            notify_stream_name = _queue_name_to_stream_name(queue_name)
-
-            if queue_position is None:
-                # queue_positionが空の状態は、既に処理中であることを示す。
-                yield self.generate_job_status_message(job_id, 'processing soon')
-
-            # queue_positionの初期値から現在のキューの位置を推定し、位置に変化がある度に通知する。
-            async for queue_position in self.response_queue_status_from_stream(request, notify_stream_name, job_id, queue_position, enqueued_at):
-                if queue_position < 0:
-                    # 0未満はキューを抜け出して、処理が始まることを示す。
-                    yield self.generate_job_status_message(job_id, 'processing soon')
-                else:
-                    yield self.generate_job_status_message(job_id, 'queued', queue_position)
-
-            # すぐに結果が反映されないので、0.1秒待ってから結果を取得
-            job_result = await get_job_result(job_queue, 0.1)
-            job_result_status = None
-            if job_result.type == Result.Type.SUCCESSFUL:
-                job_result_status = 'job success'
-            else:
-                job_result_status = 'job failed'
-
-            # ジョブの成否を通知    
-            yield self.generate_job_status_message(job_id, job_result_status)
-
-        except asyncio.CancelledError as e:
-            print("クライアントからの接続が切れました")
-
-        except Exception as e:
-            raise e
-    '''

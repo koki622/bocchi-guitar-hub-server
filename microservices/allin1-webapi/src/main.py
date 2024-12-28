@@ -1,26 +1,101 @@
+import asyncio
+from enum import Enum
+import subprocess
 from datetime import datetime
-import os
-from pathlib import Path
+import logging
 from pydantic import BaseModel
 import torch
-from .utility import adjust_segments_to_beat, analysis_result_to_json, generate_click_sound
-from allin1.models.loaders import load_pretrained_model
-from allin1.spectrogram import extract_spectrograms
+
 from contextlib import asynccontextmanager
-from fastapi import FastAPI
-import demucs.separate
-from allin1.helpers import (
-  run_inference
+from fastapi import FastAPI, HTTPException, Request
+
+# ログ設定
+logging.basicConfig(
+    level=logging.INFO,  # INFO以上のログを出力
+    format="%(asctime)s - %(levelname)s - %(message)s",  # フォーマットを指定
+    handlers=[
+        logging.StreamHandler()  # コンソールに出力
+    ]
 )
+logger = logging.getLogger(__name__)
+
+class AnalyzeExecutionError(Exception):
+    pass
+
+class AnalyzeTerminatedException(Exception):
+    pass
+
+class ClientDisconnectException(Exception):
+    pass
+
+class AnalyzeType(Enum):
+    spectrograms = 'スペクトログラム抽出'
+    structure = '音楽構造解析'
+
+async def monitor_disconnection(request: Request, process: asyncio.subprocess.Process):
+    try:
+        while True:
+            message = await request.receive()
+            if message["type"] == "http.disconnect":
+                logger.info("Client disconnected")
+                process.terminate()  # クライアントが切断された場合、プロセスを終了
+                break
+    except Exception as e:
+        logger.error(f"Error while monitoring disconnection: {e}")
+        process.terminate()  
+    raise ClientDisconnectException()
+
+async def monitor_analyze_process(process: asyncio.subprocess.Process, analyze_type: AnalyzeType):
+    # 標準出力（およびエラー出力）をリアルタイムで読み取る
+    async for line in process.stdout:
+        print(line.decode().strip())
+
+    # プロセスの終了を待つ
+    await process.wait()
+
+    if process.stderr:
+        stderr_output = await process.stderr.read()
+        logger.error("サブプロセスでエラー:", stderr_output.decode().strip())
+
+    logger.info(f'プロセス終了コード:{process.returncode}')
+
+    if process.returncode < 0:
+        raise AnalyzeTerminatedException()
+        
+    # プロセスが非ゼロの終了コードで終了した場合
+    elif process.returncode != 0:
+        raise AnalyzeExecutionError(f'{analyze_type.value}処理で例外が発生:')
+    
+async def handle_subprocess(request: Request, start_time: datetime, process: asyncio.subprocess.Process, analyze_type: AnalyzeType):
+    try:
+        # クライアントとの接続状況を監視
+        disconnection_task = asyncio.create_task(monitor_disconnection(request, process=process))
+
+        # サブプロセスを監視
+        await monitor_analyze_process(process=process, analyze_type=analyze_type)
+        end_time = datetime.now()
+        duration = end_time - start_time
+        logger.info(f"end:{end_time}, duration:{duration}")
+        return {"end":end_time}
+    except subprocess.CalledProcessError:
+        raise HTTPException(
+            status_code=500,
+            detail='解析処理失敗'
+        )
+    except AnalyzeTerminatedException:
+        logger.info(f'{analyze_type.value}処理を中断しました')
+    except ClientDisconnectException:
+        logger.info(f"クライアントとの接続が失われたので{analyze_type.value}処理をキャンセルしました")
+    finally:
+        disconnection_task.cancel()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    global model
-    print("modelロードします")
-    model = load_pretrained_model(device='cuda' if torch.cuda.is_available() else 'cpu') # model_nameにharmonix-allを使用するとlemonの最初の部分のビートがうまく認識されなかった
-    print("modelロード完了")
+    global device
+    device = 'cuda' if torch.cuda.is_available() else 'cpu'
+    logger.info(f"{device} モードで起動")
     yield
-    print("shutdown")
+    logger.info("shutdown")
 
 app = FastAPI(lifespan=lifespan)
 
@@ -31,51 +106,33 @@ class StructureCreateBody(BaseModel):
     file_path: str
     spectrograms_path: str
 
+
 @app.post("/spectrograms")
-def ext_spectrograms(body: SpectrogramsCreateBody):
-    separated_path = Path(body.separated_path)
-    save_path = separated_path.parent
+async def ext_spectrograms(request: Request, body: SpectrogramsCreateBody):
     now = datetime.now()
-    print(f"処理開始:{now}")
-    extract_spectrograms([separated_path], save_path, True)
-    os.rename(separated_path.parent / 'separated.npy', separated_path.parent / 'spectrograms.npy')
-    end_time = datetime.now()
-    duration = end_time - now
-    print(f"end:{end_time}, duration:{duration}")
+    logger.info(f"処理開始:{now}")
 
-    return {"end":end_time}
+    # 解析処理をサブプロセスで実行
+    proc = await asyncio.create_subprocess_exec(
+        'python3', '/app/src/spectrograms_process.py', body.separated_path,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+    )
+    endtime = await handle_subprocess(request=request, start_time=now, process=proc, analyze_type=AnalyzeType.spectrograms)
+    return endtime
 
+
+    
 @app.post("/structure")
-def analyze_structure(body: StructureCreateBody):
-    file_path = Path(body.file_path)
-    spec_path = Path(body.spectrograms_path)
+async def analyze_structure(request: Request, body: StructureCreateBody):
     now = datetime.now()
-    print(f"処理開始:{now}")
-    
-    with torch.no_grad():
-        result = run_inference(
-            path=file_path,
-            spec_path=spec_path,
-            model=model,
-            device='cuda' if torch.cuda.is_available() else 'cpu',
-            include_activations=False,
-            include_embeddings=False
-        )
-    save_dir = Path(file_path.parent / 'structure')
-    save_dir.mkdir()
+    logger.info(f"処理開始:{now}")
 
-    # 曲のセクションのタイミングをビートに補正
-    result.segments = adjust_segments_to_beat(result.beats, result.segments)
-
-    # 結果をjsonとして保存
-    analysis_result_to_json(result, save_dir)
-
-    y = demucs.separate.load_track(file_path, 2, 44100).numpy()
-    length = y.shape[-1]
-    # ビートの結果からクリック音を生成
-    generate_click_sound(result, length, save_dir)
-    
-    end_time = datetime.now()
-    duration = end_time - now
-    print(f"end:{end_time}, duration:{duration}")
-    return {"end":end_time}
+    # 解析処理をサブプロセスで実行
+    proc = await asyncio.create_subprocess_exec(
+        'python3', '/app/src/structure_process.py', body.file_path, body.spectrograms_path, device,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+    )
+    endtime = await handle_subprocess(request=request, start_time=now, process=proc, analyze_type=AnalyzeType.structure)
+    return endtime

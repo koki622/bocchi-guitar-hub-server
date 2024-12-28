@@ -52,6 +52,17 @@ def spectrograms(request: Request, audiofile: Audiofile = Depends(get_audiofile)
         job_router.stream_job_status(request=request, job=job)
     )
 
+@router.delete("/spectrograms/{audiofile_id}")
+async def delete_spectrograms(audiofile: Audiofile = Depends(get_audiofile)):
+    try:
+        await asyncio.to_thread(os.remove, audiofile.audiofile_directory / 'spectrograms.npy')
+        return 'ok'
+    except FileNotFoundError:
+        raise HTTPException(
+            status_code=404,
+            detail='スペクトログラム抽出結果が存在しません'
+        )
+    
 @router.post("/structure/{audiofile_id}")
 def analyze_structure(request: Request, audiofile: Audiofile = Depends(get_audiofile), job_router: HeavyJob = Depends(get_heavy_job)) -> EventSourceResponse:
     if os.path.exists(audiofile.audiofile_directory / 'structure'):
