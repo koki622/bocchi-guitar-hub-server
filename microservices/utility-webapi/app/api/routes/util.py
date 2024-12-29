@@ -4,4 +4,4 @@ router = APIRouter()
 
 @router.get('/server-status', description='okを返すだけ。')
 def responseOk():
-    return 'ok'
+    return {'status': 'ok'}
