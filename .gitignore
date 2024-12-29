@@ -6,3 +6,4 @@ microservices/utility-webapi/poetry.lock
 microservices/faster-whisper-webapi/poetry.lock
 microservices/allin1-webapi/poetry.lock
 microservices/demucs-webapi/poetry.lock
+cloudflared.deb
