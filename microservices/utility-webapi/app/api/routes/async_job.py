@@ -92,5 +92,5 @@ def processAudio(
         
     jobs = job_router.submit_jobs(api_jobs)
     return EventSourceResponse(
-        job_router.stream_job_status(request=request, job=jobs[0])
+        job_router.stream_job_status(job=jobs[0])
     )

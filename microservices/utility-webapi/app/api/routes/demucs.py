@@ -45,7 +45,7 @@ def separate(request: Request, audiofile: Audiofile = Depends(get_audiofile), jo
 
     job = job_router.submit_jobs([api_job])[0]
     return EventSourceResponse(
-        job_router.stream_job_status(request=request, job=job)
+        job_router.stream_job_status(job=job)
     )
 
 @router.get('/separated-audio/stem/{audiofile_id}')
@@ -148,7 +148,7 @@ def compression_separated_audio(request: Request, audiofile: Audiofile = Depends
         )
         job = job_router.submit_jobs([api_job])[0]
         return EventSourceResponse(
-            job_router.stream_job_status(request=request, job=job)
+            job_router.stream_job_status(job=job)
         )
         
     else:

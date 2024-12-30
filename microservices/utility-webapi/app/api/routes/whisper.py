@@ -146,7 +146,7 @@ def analyze_lyric(
 
     job = job_router.submit_jobs([api_job])[0]
     return EventSourceResponse(
-        job_router.stream_job_status(request=request, job=job)
+        job_router.stream_job_status(job=job)
     )
 
 @router.get('/lyric/{audiofile_id}')

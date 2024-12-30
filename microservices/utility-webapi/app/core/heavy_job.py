@@ -10,14 +10,13 @@ from redis import Redis
 import redis.asyncio
 import redis.client
 from rq import Queue, Callback
-from rq.job import Job, JobStatus
+from rq.job import Job, JobStatus, Dependency
 from rq.results import Result
 import shortuuid
 import httpx
 from requests.exceptions import Timeout
 import json
 from typing import Literal, Optional, Union
-from fastapi import Request
 from datetime import datetime, timezone
 from collections.abc import AsyncGenerator
 from pydantic import BaseModel
@@ -138,7 +137,6 @@ async def route_job(
     except Exception as e:
         raise e
 
-    
 class HeavyJob:
     def __init__(
         self,
@@ -151,7 +149,6 @@ class HeavyJob:
 
     async def response_queue_status_from_stream (
             self, 
-            request:Request, 
             stream_name:str, 
             job_id:str, 
             queue_position: Union[int, None], 
@@ -192,7 +189,7 @@ class HeavyJob:
             dependent_job_id = None
             if index != 0:
                 # 先頭のジョブでなければ依存先のジョブをセット
-                depends_job = job_list[index - 1]
+                depends_job = Dependency(jobs=[job_list[index - 1]])
             if len(api_jobs_with_ids) -1 > index:
                 # 次に実行するジョブIDをセット
                 dependent_job_id = api_jobs_with_ids[index + 1]['job_id']
@@ -225,29 +222,39 @@ class HeavyJob:
     
     async def stream_job_status(
         self,
-        request: Request,
         job: Job
     ): 
         current_status = job.get_status()
-        if current_status == (JobStatus.FAILED or JobStatus.CANCELED):
+        print(f'カレントステータス:{current_status}')
+        if current_status in (JobStatus.FAILED, JobStatus.CANCELED):
             yield '中止された'
+
+        retry_count = 0
+        while (current_status == JobStatus.DEFERRED):
+            print('準備中')
+            if retry_count > 2:
+                yield 'タイムアウトしました'
+                return
+            await asyncio.sleep(2.0)
+            current_status = job.get_status
+            retry_count += 1
 
         while (True):
             enqueued_at = job.enqueued_at
             job_id = job.get_id()
             job_name = job.meta.get('job_name')
-            yield self._generate_job_status_message(job_name, job_id, 'enqueue success')
+            #yield self._generate_job_status_message(job_name, job_id, 'enqueue success')
             notify_stream_name = _queue_name_to_stream_name(job.origin)
 
             queue_position = job.get_position()
-
+            print(f'job_name:{job_name}, queue_position:{queue_position}')
             try:
                 if queue_position is None:
                     # queue_positionが空の状態は、既に処理中であることを示す。
                     yield self._generate_job_status_message(job_name, job_id, 'processing soon')
 
                 # queue_positionの初期値から現在のキューの位置を推定し、位置に変化がある度に通知する。
-                async for queue_position in self.response_queue_status_from_stream(request, notify_stream_name, job_id, queue_position, enqueued_at):
+                async for queue_position in self.response_queue_status_from_stream(notify_stream_name, job_id, queue_position, enqueued_at):
                     if queue_position < 0:
                         # 0未満はキューを抜け出して、処理が始まることを示す。
                         yield self._generate_job_status_message(job_name, job_id, 'processing soon')
