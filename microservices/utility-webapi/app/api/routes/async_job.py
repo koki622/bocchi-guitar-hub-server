@@ -12,10 +12,10 @@ from app.models import Audiofile
 router = APIRouter()
 
 @router.get('/status')
-def getJobStatus(request: Request, job_id: str, job_router: HeavyJob = Depends(get_heavy_job))-> EventSourceResponse: 
+def getJobStatus(job_id: str, job_router: HeavyJob = Depends(get_heavy_job))-> EventSourceResponse: 
     job = job_router.get_job(job_id)
     return EventSourceResponse(
-        job_router.stream_job_status(request=request, job=job)
+        job_router.stream_job_status(job=job)
     )
 
 @router.post('/process-audio/{audiofile_id}')
